@@ -100,4 +100,15 @@ On the desktop, once it is back online, the R24 proof from the upstream plan:
 
 ## Departures
 
-None yet.
+- 2026-09-06, step 2: the client methods are named `prompt` and `sendKey`, not
+  `agentPrompt` and `sendKeys`. One key per call is all the phone sends.
+- 2026-09-06, step 4: prompt text and key names are also validated in the HTTP routes,
+  not only in the client, so a canned client in tests cannot let a bad body through (R15).
+- 2026-09-06, step 5: the entry point was proved on Windows through a Node preload that
+  replaces `child_process.execFile`, because Windows cannot run a script as a fake `herdr`
+  binary and no WSL distro was available. The four preflight branches, the cookie login and
+  the non-loopback warning were all exercised that way.
+- 2026-09-06, step 6: `npm test` runs `test/*.test.js` only. Node's default pattern also
+  matched `test/fixture-server.js`, which listens forever and hung the run.
+- 2026-09-06, step 7: the three proof screenshots live in `docs/main/screenshots/` and the
+  README links them.
