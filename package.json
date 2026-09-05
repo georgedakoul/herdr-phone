@@ -9,7 +9,7 @@
   "bin": { "herdr-phone": "src/index.js" },
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
     "fixture": "node test/fixture-server.js"
   },
   "keywords": ["herdr", "agents", "claude-code", "terminal", "pwa"],
