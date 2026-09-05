@@ -142,9 +142,9 @@ body[data-view="actions"] #view-actions { display: flex; flex-direction: column;
 
 .keys {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 8px 12px;
-  overflow-x: auto;
   background: var(--panel);
 }
 
