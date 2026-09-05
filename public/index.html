@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#11131a">
+<title>herdr-phone</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body data-view="home">
+<header class="top">
+  <button type="button" id="back" class="icon-btn" aria-label="Back" hidden>&#8249;</button>
+  <h1 id="title">Agents</h1>
+  <span id="net" class="net" aria-live="polite"></span>
+</header>
+
+<main id="main">
+  <section id="view-home" class="view" data-for="home">
+    <ul id="agents" class="cards" aria-label="Agents"></ul>
+    <p id="agents-empty" class="empty" hidden>No agents in this herdr session.</p>
+  </section>
+
+  <section id="view-agent" class="view" data-for="agent">
+    <pre id="transcript" class="transcript" aria-label="Transcript"></pre>
+    <form id="prompt-form" class="prompt" autocomplete="off">
+      <label for="prompt-text" class="visually-hidden">Prompt</label>
+      <textarea id="prompt-text" rows="2" placeholder="Type a prompt" required></textarea>
+      <button type="submit" id="prompt-send">Send</button>
+    </form>
+    <div class="keys" role="group" aria-label="Keys">
+      <button type="button" data-key="esc">esc</button>
+      <button type="button" data-key="enter">enter</button>
+      <button type="button" data-key="yes">yes</button>
+      <button type="button" data-key="no">no</button>
+      <button type="button" data-key="up">&#9650;</button>
+      <button type="button" data-key="down">&#9660;</button>
+      <button type="button" id="open-terminal">terminal</button>
+    </div>
+  </section>
+
+  <section id="view-terminal" class="view" data-for="terminal">
+    <pre id="terminal" class="terminal" aria-label="Terminal"></pre>
+  </section>
+
+  <section id="view-worktrees" class="view" data-for="worktrees">
+    <ul id="worktrees" class="cards" aria-label="Worktrees"></ul>
+    <p id="worktrees-empty" class="empty" hidden>No worktrees.</p>
+  </section>
+
+  <section id="view-actions" class="view" data-for="actions">
+    <ul id="actions" class="cards" aria-label="Actions"></ul>
+    <p id="actions-empty" class="empty" hidden>No plugin actions.</p>
+    <p id="action-result" class="result" aria-live="polite"></p>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Views">
+  <button type="button" data-goto="home" aria-current="page">Agents</button>
+  <button type="button" data-goto="worktrees">Worktrees</button>
+  <button type="button" data-goto="actions">Actions</button>
+  <form method="post" action="/logout"><button type="submit" class="quiet">Sign out</button></form>
+</nav>
+
+<script src="/app.js"></script>
+</body>
+</html>

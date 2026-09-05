@@ -1,0 +1,13 @@
+{
+  "name": "herdr-phone",
+  "short_name": "herdr",
+  "description": "Watch and answer your Herdr agents from a phone.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#11131a",
+  "theme_color": "#11131a",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
