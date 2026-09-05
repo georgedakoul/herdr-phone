@@ -1,0 +1,17 @@
+{
+  "name": "herdr-phone",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Phone-first web client for a Herdr server. Watch your coding agents, read a transcript, answer a prompt, from a home screen icon.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "bin": { "herdr-phone": "src/index.js" },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "fixture": "node test/fixture-server.js"
+  },
+  "keywords": ["herdr", "agents", "claude-code", "terminal", "pwa"],
+  "repository": { "type": "git", "url": "git+https://github.com/georgedakoul/herdr-phone.git" }
+}
