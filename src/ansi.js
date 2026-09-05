@@ -36,7 +36,8 @@ function extended(params, at) {
   const mode = params[at + 1]
   if (mode === 5) return { colour: xterm256(params[at + 2] ?? 0), used: 2 }
   if (mode === 2) return { colour: rgb(params[at + 2] ?? 0, params[at + 3] ?? 0, params[at + 4] ?? 0), used: 4 }
-  return { colour: null, used: 1 }
+  // An unknown mode leaves the rest of the parameter list unreadable, so it is all discarded.
+  return { colour: null, used: params.length }
 }
 
 export function applySgr(state, raw) {
@@ -122,8 +123,13 @@ export function ansiToHtml(input) {
       let j = i + 2
       while (j < text.length && text[j] !== BEL && !(text[j] === ESC && text[j + 1] === "\\")) j += 1
       i = j < text.length && text[j] === ESC ? j + 1 : j
+    } else if (kind !== undefined && kind.charCodeAt(0) >= 0x20 && kind.charCodeAt(0) <= 0x2f) {
+      // Escapes with intermediate bytes, such as charset selection ESC ( B, end at a final byte.
+      let j = i + 2
+      while (j < text.length && text.charCodeAt(j) >= 0x20 && text.charCodeAt(j) <= 0x2f) j += 1
+      i = j
     } else {
-      // Two byte escapes such as charset selection, and a trailing lone ESC.
+      // Two byte escapes, and a trailing lone ESC.
       i += kind === undefined ? 0 : 1
     }
   }
