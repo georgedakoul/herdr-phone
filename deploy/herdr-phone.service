@@ -1,0 +1,18 @@
+[Unit]
+Description=herdr-phone, a phone view of the local Herdr session
+Documentation=https://github.com/georgedakoul/herdr-phone
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/herdr-phone
+EnvironmentFile=-%h/.config/herdr-phone/env
+ExecStart=/usr/bin/env node %h/herdr-phone/src/index.js
+# The app exits when Herdr is not running, so a retry every thirty seconds
+# doubles as waiting for Herdr to come up.
+Restart=on-failure
+RestartSec=30
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=default.target
