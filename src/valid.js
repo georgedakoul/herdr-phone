@@ -40,7 +40,10 @@ export function readBody(req, limit = MAX_BODY) {
       size += chunk.length
       if (size > limit) {
         reject(new BadRequest("body too large"))
-        req.destroy()
+        // Drain instead of destroy, so the 400 still reaches the client.
+        chunks.length = 0
+        req.removeAllListeners("data")
+        req.resume()
         return
       }
       chunks.push(chunk)

@@ -178,8 +178,9 @@ test("bad bodies are 400 with a message, never a stack trace", async () => {
   const empty = await post("/api/agent/a/prompt", { text: "" }, authed)
   assert.equal(empty.status, 400)
 
-  const huge = await post("/api/agent/a/prompt", JSON.stringify({ text: "x".repeat(70 * 1024) }), authed).catch((e) => e)
-  if (huge instanceof Response) assert.equal(huge.status, 400)
+  const huge = await post("/api/agent/a/prompt", JSON.stringify({ text: "x".repeat(70 * 1024) }), authed)
+  assert.equal(huge.status, 400)
+  assert.deepEqual(await huge.json(), { error: "body too large" })
 
   const badKey = await post("/api/agent/a/keys", { key: "ctrl-c" }, authed)
   assert.equal(badKey.status, 400)
@@ -197,9 +198,12 @@ test("herdr errors map to 502 and 503 with the herdr message", async () => {
     const generic = fakeClient({ worktrees: async () => { throw new HerdrError("weird", "odd thing") } })
     const s2 = createServer(createApp({ client: generic.client, token: TOKEN }))
     await new Promise((r) => s2.listen(0, "127.0.0.1", r))
-    const r2 = await fetch(`http://127.0.0.1:${s2.address().port}/api/worktrees`, { headers: authed })
-    assert.equal(r2.status, 502)
-    s2.close()
+    try {
+      const r2 = await fetch(`http://127.0.0.1:${s2.address().port}/api/worktrees`, { headers: authed })
+      assert.equal(r2.status, 502)
+    } finally {
+      s2.close()
+    }
   } finally {
     s.close()
   }
@@ -227,4 +231,20 @@ test("unknown api routes are 404 json, unknown pages 404 text", async () => {
   assert.deepEqual(await api.json(), { error: "no such route" })
   const page = await get("/nope", authed)
   assert.equal(page.status, 404)
+})
+
+test("ids with a colon survive the percent encoding the client applies", async () => {
+  const res = await get(`/api/agent/${encodeURIComponent("w1:p1")}`, authed)
+  assert.equal(res.status, 200)
+  assert.deepEqual(fake.calls.at(-1), ["agentRead", "w1:p1", { lines: undefined }])
+  const bad = await get("/api/agent/%E0%A4%A", authed)
+  assert.equal(bad.status, 400)
+})
+
+test("key names that live on Object.prototype are unknown keys, not a 500", async () => {
+  for (const key of ["constructor", "__proto__", "toString"]) {
+    const res = await post("/api/agent/a/keys", JSON.stringify({ key }), authed)
+    assert.equal(res.status, 400, key)
+    assert.deepEqual(await res.json(), { error: `unknown key "${key}"` })
+  }
 })

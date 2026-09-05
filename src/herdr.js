@@ -128,14 +128,16 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       requireId(target, "agent")
       if (typeof text !== "string" || !text.trim()) throw new BadRequest("prompt text is empty")
       // Free text, so it is not pattern checked. It is one argument and there is no shell.
+      // herdr 0.8.2 takes TEXT positionally even when it starts with "-", and does not
+      // treat "--" as an option separator, so nothing is inserted before it.
       const result = await call(["agent", "prompt", target, text])
       return result.agent ?? {}
     },
 
     async sendKey(target, name) {
       requireId(target, "agent")
+      if (!Object.hasOwn(KEY_MAP, name)) throw new BadRequest(`unknown key "${name}"`)
       const keys = KEY_MAP[name]
-      if (!keys) throw new BadRequest(`unknown key "${name}"`)
       await call(["agent", "send-keys", target, ...keys])
       return { sent: keys }
     },

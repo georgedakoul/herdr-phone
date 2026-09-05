@@ -22,6 +22,7 @@ const STATIC = {
 const PUBLIC_PATHS = new Set(["/login", "/style.css", "/manifest.webmanifest", "/icon.svg"])
 
 const STATUS_ORDER = { blocked: 0, working: 1, idle: 2, done: 3, unknown: 4 }
+const statusRank = (status) => (Object.hasOwn(STATUS_ORDER, status) ? STATUS_ORDER[status] : 9)
 
 const sha = (value) => createHash("sha256").update(String(value ?? "")).digest()
 
@@ -29,7 +30,7 @@ const sha = (value) => createHash("sha256").update(String(value ?? "")).digest()
 export const tokenMatches = (given, expected) => timingSafeEqual(sha(given), sha(expected))
 
 export const sortAgents = (agents) =>
-  [...agents].sort((a, b) => (STATUS_ORDER[a.agent_status] ?? 9) - (STATUS_ORDER[b.agent_status] ?? 9))
+  [...agents].sort((a, b) => statusRank(a.agent_status) - statusRank(b.agent_status))
 
 const isSecure = (req) => Boolean(req.socket?.encrypted) || req.headers["x-forwarded-proto"] === "https"
 
@@ -101,7 +102,7 @@ export function createApp({ client, token }) {
     "POST /api/agent/:target/keys": async ({ target, req }) => {
       const body = await readJson(req)
       const key = String(body.key ?? "")
-      if (!KEY_MAP[key]) throw new BadRequest(`unknown key "${key}"`)
+      if (!Object.hasOwn(KEY_MAP, key)) throw new BadRequest(`unknown key "${key}"`)
       return { ok: true, ...(await client.sendKey(target, key)) }
     },
     "GET /api/pane/:target": async ({ target }) => {
@@ -118,6 +119,11 @@ export function createApp({ client, token }) {
     },
   }
 
+  /** Ids such as "w1:p1" arrive percent encoded. A malformed escape becomes an empty id, which fails requireId with a 400. */
+  const decodeSegment = (segment) => {
+    try { return decodeURIComponent(segment) } catch { return "" }
+  }
+
   /** Matches "/api/agent/<id>/prompt" style paths against the table above. */
   function match(method, pathname) {
     const parts = pathname.split("/")
@@ -129,7 +135,7 @@ export function createApp({ client, token }) {
       let target
       let ok = true
       for (let i = 0; i < want.length; i += 1) {
-        if (want[i] === ":target") target = parts[i]
+        if (want[i] === ":target") target = decodeSegment(parts[i])
         else if (want[i] !== parts[i]) { ok = false; break }
       }
       if (ok) return { handler: routes[key], target }
