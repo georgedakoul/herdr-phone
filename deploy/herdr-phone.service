@@ -2,6 +2,7 @@
 Description=herdr-phone, a phone view of the local Herdr session
 Documentation=https://github.com/georgedakoul/herdr-phone
 After=network.target
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -12,7 +13,6 @@ ExecStart=/usr/bin/env node %h/herdr-phone/src/index.js
 # doubles as waiting for Herdr to come up.
 Restart=on-failure
 RestartSec=30
-StartLimitIntervalSec=0
 
 [Install]
 WantedBy=default.target

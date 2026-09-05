@@ -108,3 +108,6 @@ invoke. Read plus reply is the whole product.
 ## Changelog
 
 - 2026-09-05. First version.
+- 2026-09-06. R6: the stylesheet, manifest and icon are served without the cookie too, so the
+  login page can render, and `POST /logout` clears the cookie whether or not it was valid.
+  None of them carry session data. Found in review, no code change.
