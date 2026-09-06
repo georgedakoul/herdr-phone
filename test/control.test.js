@@ -247,6 +247,8 @@ test("worktree create, open and remove", async () => {
   ])
   await assert.rejects(client.createWorktree({ workspace: "w1" }), (e) => e.status === 400 && e.message === "invalid branch")
   await assert.rejects(client.createWorktree({ workspace: "w1", branch: "-D" }), (e) => e.status === 400)
+  await client.createWorktree({ workspace: "w1", branch: "b".repeat(512) })
+  await assert.rejects(client.createWorktree({ workspace: "w1", branch: "b".repeat(513) }), (e) => e.status === 400)
 
   await client.openWorktree({ path: "/home/dev/src/app-spike" })
   assert.deepEqual(last(fake), ["worktree", "open", "--path", "/home/dev/src/app-spike", "--no-focus"])
