@@ -14,15 +14,26 @@
 </head>
 <body data-view="home">
 <header class="top">
+  <button type="button" id="menu" class="icon-btn" aria-label="Menu" aria-expanded="false" aria-controls="menu-row">&#9776;</button>
   <button type="button" id="back" class="icon-btn" aria-label="Back" hidden>&#8249;</button>
   <h1 id="title">Agents</h1>
   <span id="net" class="net" aria-live="polite"></span>
+  <button type="button" id="plus" class="icon-btn" aria-label="New agent">+</button>
 </header>
+
+<nav id="menu-row" class="menu-row" aria-label="Views" hidden>
+  <button type="button" data-goto="home" aria-current="page">Agents</button>
+  <button type="button" data-goto="layout">Layout</button>
+  <button type="button" data-goto="worktrees">Worktrees</button>
+  <button type="button" data-goto="actions">Actions</button>
+  <button type="button" id="notify">Notify</button>
+  <form method="post" action="/logout"><button type="submit" class="quiet">Sign out</button></form>
+</nav>
 
 <main id="main">
   <section id="view-home" class="view" data-for="home">
     <ul id="agents" class="cards" aria-label="Agents"></ul>
-    <p id="agents-empty" class="empty" hidden>No agents in this herdr session.</p>
+    <p id="agents-empty" class="empty" hidden>No agents in this herdr session. Tap + to start one.</p>
   </section>
 
   <section id="view-agent" class="view" data-for="agent">
@@ -40,11 +51,17 @@
       <button type="button" data-key="up">&#9650;</button>
       <button type="button" data-key="down">&#9660;</button>
       <button type="button" id="open-terminal">terminal</button>
+      <button type="button" id="agent-more">more</button>
     </div>
   </section>
 
   <section id="view-terminal" class="view" data-for="terminal">
     <pre id="terminal" class="terminal" aria-label="Terminal"></pre>
+  </section>
+
+  <section id="view-layout" class="view" data-for="layout">
+    <div id="layout" class="tree" aria-label="Layout"></div>
+    <p id="layout-empty" class="empty" hidden>No workspaces.</p>
   </section>
 
   <section id="view-worktrees" class="view" data-for="worktrees">
@@ -59,12 +76,12 @@
   </section>
 </main>
 
-<nav class="tabs" aria-label="Views">
-  <button type="button" data-goto="home" aria-current="page">Agents</button>
-  <button type="button" data-goto="worktrees">Worktrees</button>
-  <button type="button" data-goto="actions">Actions</button>
-  <form method="post" action="/logout"><button type="submit" class="quiet">Sign out</button></form>
-</nav>
+<dialog id="dlg" aria-labelledby="dlg-title">
+  <form id="dlg-form" method="dialog" autocomplete="off">
+    <h2 id="dlg-title"></h2>
+    <div id="dlg-body"></div>
+  </form>
+</dialog>
 
 <script src="/app.js"></script>
 </body>
