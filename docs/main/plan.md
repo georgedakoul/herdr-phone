@@ -98,6 +98,14 @@ On the desktop, once it is back online, the R24 proof from the upstream plan:
 7. A prompt typed on the phone appears in the pane on the laptop.
 8. A clean clone starts with only the environment variables the README names.
 
+Laptop stand-in, 2026-09-06, against a live Herdr 0.8.2 server that George started himself:
+criterion 6 holds apart from the phone and `tailscale serve`. The app started with `HERDR_BIN`
+pointing at the installed binary, the browser at 390x844 listed the same two idle Claude Code
+panes that `herdr agent list` prints, opened one and showed its transcript, and the terminal
+view rendered the pane with colour (39 styled spans). Send-keys landed: an `esc` posted to an
+idle pane answered `{"ok":true,"sent":["esc"]}`. Criterion 7 waits for George's go because a
+prompt types into his live session. Criterion 8 still waits for the desktop.
+
 ## Departures
 
 - 2026-09-06, step 2: the client methods are named `prompt` and `sendKey`, not
