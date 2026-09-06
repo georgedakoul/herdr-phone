@@ -112,6 +112,9 @@
 
   let resolveDialog = null
   el.dlg.addEventListener("close", () => {
+    // close() fires this event asynchronously, so a sheet that opens a form in its own
+    // handler sees this land after showModal. That stale event must not cancel the form.
+    if (el.dlg.open) return
     const resolve = resolveDialog
     resolveDialog = null
     if (resolve) resolve(null)
