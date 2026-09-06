@@ -19,12 +19,17 @@ const tabs = [
   { tab_id: "ws-1:t2", workspace_id: "ws-1", label: "shell", number: 2 },
   { tab_id: "ws-2:t1", workspace_id: "ws-2", label: "docs", number: 1 },
 ]
+// The real server sends agent_session as an object, never a name. A user-set name arrives in
+// `name`, and only on `agent list`: `pane list` has no name field at all.
+let nextSession = 0
+const session = (agent) => ({ agent, kind: "id", source: `herdr:${agent}`, value: `4e4f1f03-59fa-4d05-9b0a-${(nextSession += 1).toString().padStart(12, "0")}` })
+const titles = (agent) => ({ terminal_title: agent === "claude" ? "✳ Claude Code" : "✳ Codex", terminal_title_stripped: agent === "claude" ? "Claude Code" : "Codex" })
 const panes = [
-  { pane_id: "pane-2", tab_id: "ws-1:t1", workspace_id: "ws-1", terminal_id: "term-2", agent: "claude", agent_session: "api refactor", agent_status: "blocked", cwd: "~/src/api", revision: 41, tokens: 88210 },
-  { pane_id: "pane-3", tab_id: "ws-1:t1", workspace_id: "ws-1", terminal_id: "term-3", agent: "codex", agent_session: "tests", agent_status: "working", cwd: "~/src/api", revision: 7, tokens: 3020 },
+  { pane_id: "pane-2", tab_id: "ws-1:t1", workspace_id: "ws-1", terminal_id: "term-2", agent: "claude", name: "api refactor", agent_session: session("claude"), ...titles("claude"), agent_status: "blocked", cwd: "~/src/api", revision: 41, tokens: 88210 },
+  { pane_id: "pane-3", tab_id: "ws-1:t1", workspace_id: "ws-1", terminal_id: "term-3", agent: "codex", name: "tests", agent_session: session("codex"), ...titles("codex"), agent_status: "working", cwd: "~/src/api", revision: 7, tokens: 3020 },
   { pane_id: "pane-5", tab_id: "ws-1:t2", workspace_id: "ws-1", terminal_id: "term-5", agent: null, agent_session: null, agent_status: null, cwd: "~/src/api", revision: 1, terminal_title: "zsh" },
-  { pane_id: "pane-1", tab_id: "ws-2:t1", workspace_id: "ws-2", terminal_id: "term-1", agent: "claude", agent_session: "docs", agent_status: "idle", cwd: "~/src/docs-site", revision: 3, tokens: 12400 },
-  { pane_id: "pane-4", tab_id: "ws-2:t1", workspace_id: "ws-2", terminal_id: "term-4", agent: "claude", agent_session: "changelog", agent_status: "done", cwd: "~/src/docs-site", revision: 2, tokens: 640 },
+  { pane_id: "pane-1", tab_id: "ws-2:t1", workspace_id: "ws-2", terminal_id: "term-1", agent: "claude", name: "docs", agent_session: session("claude"), ...titles("claude"), agent_status: "idle", cwd: "~/src/docs-site", revision: 3, tokens: 12400 },
+  { pane_id: "pane-4", tab_id: "ws-2:t1", workspace_id: "ws-2", terminal_id: "term-4", agent: "claude", agent_session: session("claude"), ...titles("claude"), agent_status: "done", cwd: "~/src/docs-site", revision: 2, tokens: 640 },
 ]
 const focus = { workspace_id: "ws-1", tab_id: "ws-1:t1", pane_id: "pane-2" }
 const zoomed = new Set()
@@ -79,7 +84,9 @@ const actions = [
 
 let revision = 41
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-const pane = (target) => panes.find((p) => p.pane_id === target || p.terminal_id === target || (p.agent_session === target && p.agent))
+const pane = (target) => panes.find((p) => p.pane_id === target || p.terminal_id === target || (p.name === target && p.agent))
+// `pane list` carries no name, so the phone only ever learns a name from `agent list`.
+const bare = ({ name, ...rest }) => rest
 const need = (target) => {
   const p = pane(target)
   if (!p) throw new HerdrError("pane_not_found", `no pane ${target}`)
@@ -99,7 +106,7 @@ const withFocus = (list, key) => list.map((item) => ({ ...item, focused: item[ke
 
 function addPane(tabId, cwd, extra = {}) {
   const t = tab(tabId)
-  const p = { pane_id: `pane-${nextId}`, tab_id: t.tab_id, workspace_id: t.workspace_id, terminal_id: `term-${nextId}`, agent: null, agent_session: null, agent_status: null, cwd, revision: 1, terminal_title: "zsh", ...extra }
+  const p = { pane_id: `pane-${nextId}`, tab_id: t.tab_id, workspace_id: t.workspace_id, terminal_id: `term-${nextId}`, agent: null, agent_session: null, agent_status: null, cwd, revision: 1, ...extra }
   nextId += 1
   panes.push(p)
   revision += 1
@@ -152,14 +159,14 @@ const ok = async () => ({})
 const client = {
   async status() { return { client: { version: "0.8.2", protocol: 20 }, server: { status: "running", running: true, version: "0.8.2", protocol: 20 } } },
   async snapshot() {
-    const agents = withFocus(panes, "pane_id").filter((p) => p.agent).map((p) => ({ ...p, name: p.agent_session }))
+    const agents = withFocus(panes, "pane_id").filter((p) => p.agent)
     return {
       protocol: 20,
       version: "0.8.2",
       agents,
       workspaces: withFocus(workspaces, "workspace_id").map((w) => ({ ...w, tab_count: tabs.filter((t) => t.workspace_id === w.workspace_id).length, pane_count: panes.filter((p) => p.workspace_id === w.workspace_id).length })),
       tabs: withFocus(tabs, "tab_id").map((t) => ({ ...t, pane_count: panes.filter((p) => p.tab_id === t.tab_id).length })),
-      panes: withFocus(panes, "pane_id"),
+      panes: withFocus(panes, "pane_id").map(bare),
       layouts: tabs.map((t) => ({ tab_id: t.tab_id, workspace_id: t.workspace_id, zoomed: panes.some((p) => p.tab_id === t.tab_id && zoomed.has(p.pane_id)), focused_pane_id: panes.find((p) => p.tab_id === t.tab_id && zoomed.has(p.pane_id))?.pane_id ?? null })),
       focused_workspace_id: focus.workspace_id,
       focused_tab_id: focus.tab_id,
@@ -197,22 +204,23 @@ const client = {
 
   // Full control.
   async kinds() { return { installed: ["claude", "codex"], all: KINDS } },
-  async paneCurrent() { return { ...need(focus.pane_id) } },
-  async paneGet(id) { return { ...need(id) } },
+  async paneCurrent() { return bare(need(focus.pane_id)) },
+  async paneGet(id) { return bare(need(id)) },
   async startAgent({ name, kind, pane: target, direction = "right" }) {
     const source = target ? need(target) : need(focus.pane_id)
     const p = addPane(source.tab_id, source.cwd, { split: direction })
     await sleep(600)
     if (name === "stuck") return { pane_id: p.pane_id, agent: null, ready: false, message: "agent did not become ready in time" }
-    Object.assign(p, { agent: kind, agent_session: name, agent_status: "idle", tokens: 0 })
+    Object.assign(p, { agent: kind, agent_session: session(kind), ...titles(kind), agent_status: "idle", tokens: 0 })
+    if (name) p.name = name
     transcripts[p.pane_id] = `> ${kind} started as ${name}\n\nReady.`
     return { pane_id: p.pane_id, agent: { ...p }, ready: true }
   },
-  async renameAgent(target, name) { const p = need(target); p.agent_session = name; p.revision += 1; revision += 1; return { agent: { ...p } } },
+  async renameAgent(target, name) { const p = need(target); p.name = name; p.revision += 1; revision += 1; return { agent: { ...p } } },
   async focusAgent(target) { focusPane(need(target)); return { agent: { ...need(target) } } },
   async explainAgent(target) {
     const p = need(target)
-    return { text: `Agent ${p.agent_session ?? "(unnamed)"} (${p.agent}) in pane ${p.pane_id} is ${p.agent_status}.\nWorking directory: ${p.cwd}\nLast change: revision ${p.revision}` }
+    return { text: `Agent ${p.name ?? "(unnamed)"} (${p.agent}) in pane ${p.pane_id} is ${p.agent_status}.\nWorking directory: ${p.cwd}\nLast change: revision ${p.revision}` }
   },
   async waitAgent(target, { until = [] } = {}) {
     const p = need(target)

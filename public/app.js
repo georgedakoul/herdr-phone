@@ -91,8 +91,13 @@
     return node
   }
 
+  // agent_session is an object ({agent, kind, source, value}), never a display name, so it
+  // must never reach the DOM. Only a non-empty string is a label.
+  const named = (value) => (typeof value === "string" && value.trim() ? value.trim() : "")
+  const paneName = (pane) => named(pane.terminal_title_stripped) || named(pane.terminal_title) || named(pane.agent)
+
   function agentName(agent) {
-    return agent.name || agent.agent_session || agent.display_agent || agent.title || agent.terminal_title_stripped || agent.agent || agent.terminal_id
+    return named(agent.name) || paneName(agent) || agent.pane_id || agent.terminal_id
   }
 
   // herdr addresses an agent by its pane id (w1:p3); the terminal id is agent_not_found.
@@ -246,7 +251,7 @@
 
   // ---- forms behind the plus button and the menu ----
 
-  const paneLabel = (pane) => [pane.pane_id, pane.agent_session || pane.terminal_title_stripped || pane.terminal_title || pane.agent, pane.focused ? "focused" : ""].filter(Boolean).join(" · ")
+  const paneLabel = (pane) => [pane.pane_id, paneName(pane), pane.focused ? "focused" : ""].filter(Boolean).join(" · ")
 
   async function newAgent() {
     let kinds, layout
@@ -336,7 +341,7 @@
     const others = (layout ? layout.panes : []).filter((p) => p.pane_id !== id)
     const otherTabs = (layout ? layout.tabs : []).filter((t) => t.tab_id !== pane.tab_id)
     const items = []
-    if (pane.agent) items.push({ label: `Open agent ${pane.agent_session || pane.agent}`, value: "open" })
+    if (pane.agent) items.push({ label: `Open agent ${paneName(pane)}`, value: "open" })
     items.push(
       { label: "Split right", value: "split-right" },
       { label: "Split down", value: "split-down" },
@@ -593,9 +598,9 @@
         for (const pane of (data.panes || []).filter((p) => p.tab_id === tab.tab_id)) {
           const isZoomed = zoomed.has(pane.pane_id)
           const row = button("", () => paneActions({ ...pane, zoomed: isZoomed }, data), `node pane status-${pane.agent_status || "none"}${pane.focused ? " focused" : ""}`)
-          const label = pane.agent_session || pane.terminal_title_stripped || pane.terminal_title || pane.pane_id
+          const label = paneName(pane) || pane.pane_id
           row.append(text("span", label, "name"))
-          const bits = [pane.pane_id]
+          const bits = label === pane.pane_id ? [] : [pane.pane_id]
           if (pane.agent) bits.push(`${pane.agent} ${pane.agent_status || ""}`.trim())
           if (pane.focused) bits.push("focused")
           if (isZoomed) bits.push("zoomed")
