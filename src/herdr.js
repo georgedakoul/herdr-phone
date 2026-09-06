@@ -3,7 +3,7 @@
  * which prints the same JSON envelope the bundled API schema documents.
  */
 import { execFile } from "node:child_process"
-import { requireId, BadRequest } from "./valid.js"
+import { requireId, requireName, requireLabel, requirePath, requireText, requireEnum, BadRequest } from "./valid.js"
 
 /** The protocol this client was written against. Override only on purpose. */
 export const PINNED_PROTOCOL = 20
@@ -100,9 +100,44 @@ export const KEY_MAP = {
   no: ["n", "enter"],
 }
 
+/** Every agent kind herdr 0.8.2 knows. The phone offers only these, installed ones first. */
+export const KINDS = [
+  "pi", "claude", "codex", "gemini", "cursor", "devin", "agy", "cline", "omp", "mastracode", "opencode",
+  "copilot", "kimi", "kiro", "droid", "amp", "grok", "hermes", "kilo", "qodercli", "qwen", "maki",
+]
+
+/** Integration names that differ from the agent kind they install. */
+const INTEGRATION_KIND = { "antigravity-cli": "agy" }
+
+/**
+ * integration status prints one line per integration, "claude: current (v8) (path)" or
+ * "codex: not installed (path)". Anything that is not "not installed" counts as installed.
+ */
+export function parseIntegrationStatus(text) {
+  const installed = []
+  for (const line of String(text ?? "").split("\n")) {
+    const m = /^\s*([a-z][a-z0-9-]*):\s*(.*)$/i.exec(line)
+    if (!m || /^not installed/i.test(m[2])) continue
+    const kind = INTEGRATION_KIND[m[1]] ?? m[1]
+    if (KINDS.includes(kind) && !installed.includes(kind)) installed.push(kind)
+  }
+  return installed
+}
+
+export const DIRECTIONS = ["right", "down"]
+export const RESIZE_DIRECTIONS = ["left", "right", "up", "down"]
+export const ZOOM_MODES = ["toggle", "on", "off"]
+export const WAIT_STATES = ["idle", "working", "blocked", "done", "unknown"]
+export const POSITIONS = ["top-left", "top-right", "bottom-left", "bottom-right"]
+export const SOUNDS = ["none", "done", "request"]
+
+/** Longest a start or wait may block. Long enough for a slow agent, short enough for a phone. */
+export const MAX_WAIT_MS = 120_000
+const clampWait = (ms) => Math.max(1000, Math.min(MAX_WAIT_MS, Number(ms) || MAX_WAIT_MS))
+
 export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
-  const exec = async (args) => {
-    const { error, stdout, stderr } = await run(bin, args, { timeout })
+  const exec = async (args, options = {}) => {
+    const { error, stdout, stderr } = await run(bin, args, { timeout, ...options })
     if (error && !String(stdout ?? "").trim()) {
       const why =
         error.code === "ENOENT"
@@ -113,7 +148,11 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
     return { stdout }
   }
 
-  const call = async (args) => parseEnvelope((await exec(args)).stdout)
+  const call = async (args, options) => parseEnvelope((await exec(args, options)).stdout)
+
+  /** A rename takes a name, or null to clear it. herdr spells that --clear for agents and panes alike. */
+  const rename = (group, id, value, check) =>
+    call(value === null ? [group, "rename", id, "--clear"] : [group, "rename", id, check(value)])
 
   return {
     bin,
@@ -177,6 +216,195 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       if (pluginId) args.push("--plugin", requireId(pluginId, "plugin id"))
       const result = await call(args)
       return { action: result.action ?? {}, log: result.log ?? null }
+    },
+
+    /** Kinds whose integration is installed on this box, plus the full list for the text field. */
+    async kinds() {
+      const { stdout } = await exec(["integration", "status"])
+      return { installed: parseIntegrationStatus(stdout), all: KINDS }
+    },
+
+    async paneCurrent() {
+      const result = await call(["pane", "current"])
+      return result.pane ?? {}
+    },
+
+    async paneGet(paneId) {
+      const result = await call(["pane", "get", requireId(paneId, "pane id")])
+      return result.pane ?? {}
+    },
+
+    /**
+     * The herdr recipe for a new agent: split the chosen pane in its own directory without
+     * stealing focus, then start the agent in the new pane. A start that times out still
+     * leaves the pane behind, so that case comes back as ready:false rather than an error.
+     */
+    async startAgent({ name, kind, pane, direction = "right", cwd, timeout: waitMs } = {}) {
+      requireName(name, "agent name")
+      requireEnum(kind, KINDS, "kind")
+      requireEnum(direction, DIRECTIONS, "direction")
+      const source = pane ? await this.paneGet(pane) : await this.paneCurrent()
+      if (!source.pane_id) throw new HerdrError("no_pane", "no pane to split")
+      const dir = cwd ? requirePath(cwd, "cwd") : source.cwd
+      const split = await this.splitPane(source.pane_id, { direction, cwd: dir })
+      const ms = clampWait(waitMs)
+      try {
+        const args = ["agent", "start", name, "--kind", kind, "--pane", split.pane_id, "--timeout", String(ms)]
+        const result = await call(args, { timeout: ms + 5000 })
+        return { pane_id: split.pane_id, agent: result.agent ?? {}, ready: true }
+      } catch (error) {
+        if (error instanceof HerdrError && error.code === "agent_not_ready") {
+          return { pane_id: split.pane_id, agent: null, ready: false, message: error.message }
+        }
+        throw error
+      }
+    },
+
+    renameAgent: async (target, name) =>
+      rename("agent", requireId(target, "agent"), name, (v) => requireName(v, "agent name")),
+
+    focusAgent: async (target) => call(["agent", "focus", requireId(target, "agent")]),
+
+    /** Plain text, the same thing a terminal user reads. */
+    async explainAgent(target) {
+      const { stdout } = await exec(["agent", "explain", requireId(target, "agent")])
+      return { text: String(stdout ?? "").replace(/\r\n/g, "\n").trim() }
+    },
+
+    async waitAgent(target, { until = [], timeout: waitMs } = {}) {
+      requireId(target, "agent")
+      const ms = clampWait(waitMs)
+      const args = ["agent", "wait", target]
+      for (const state of Array.isArray(until) ? until : [until]) {
+        args.push("--until", requireEnum(state, WAIT_STATES, "state"))
+      }
+      args.push("--timeout", String(ms))
+      const result = await call(args, { timeout: ms + 5000 })
+      return result.agent ?? result
+    },
+
+    async splitPane(paneId, { direction = "right", cwd } = {}) {
+      requireId(paneId, "pane id")
+      const args = ["pane", "split", paneId, "--direction", requireEnum(direction, DIRECTIONS, "direction")]
+      if (cwd) args.push("--cwd", requirePath(cwd, "cwd"))
+      args.push("--no-focus")
+      const result = await call(args)
+      const created = result.pane ?? {}
+      if (!created.pane_id) throw new HerdrError("bad_response", "pane split returned no pane id")
+      return created
+    },
+
+    closePane: async (paneId) => call(["pane", "close", requireId(paneId, "pane id")]),
+
+    zoomPane: async (paneId, mode = "toggle") =>
+      call(["pane", "zoom", requireId(paneId, "pane id"), `--${requireEnum(mode, ZOOM_MODES, "zoom mode")}`]),
+
+    renamePane: async (paneId, label) =>
+      rename("pane", requireId(paneId, "pane id"), label, (v) => requireLabel(v, "label")),
+
+    runInPane: async (paneId, command) =>
+      call(["pane", "run", requireId(paneId, "pane id"), requireText(command, "command")]),
+
+    sendText: async (paneId, text) => call(["pane", "send-text", requireId(paneId, "pane id"), requireText(text, "text")]),
+
+    async paneSendKey(paneId, name) {
+      requireId(paneId, "pane id")
+      if (!Object.hasOwn(KEY_MAP, name)) throw new BadRequest(`unknown key "${name}"`)
+      await call(["pane", "send-keys", paneId, ...KEY_MAP[name]])
+      return { sent: KEY_MAP[name] }
+    },
+
+    /** One of three destinations: an existing tab, a new tab, or a new workspace. */
+    async movePane(paneId, to = {}) {
+      const args = ["pane", "move", requireId(paneId, "pane id")]
+      if (to.new_workspace) {
+        args.push("--new-workspace")
+        if (to.label) args.push("--label", requireLabel(to.label))
+      } else if (to.new_tab) {
+        args.push("--new-tab")
+        if (to.workspace) args.push("--workspace", requireId(to.workspace, "workspace id"))
+        if (to.label) args.push("--label", requireLabel(to.label))
+      } else if (to.tab) {
+        args.push("--tab", requireId(to.tab, "tab id"), "--split", requireEnum(to.split ?? "right", DIRECTIONS, "direction"))
+        if (to.target_pane) args.push("--target-pane", requireId(to.target_pane, "pane id"))
+        args.push("--no-focus")
+      } else {
+        throw new BadRequest("move needs tab, new_tab or new_workspace")
+      }
+      return call(args)
+    },
+
+    swapPanes: async (source, target) =>
+      call(["pane", "swap", "--source-pane", requireId(source, "pane id"), "--target-pane", requireId(target, "pane id")]),
+
+    async resizePane(paneId, direction, amount) {
+      const args = ["pane", "resize", "--pane", requireId(paneId, "pane id")]
+      args.push("--direction", requireEnum(direction, RESIZE_DIRECTIONS, "direction"))
+      if (amount !== undefined && amount !== null && amount !== "") {
+        const n = Number(amount)
+        if (!Number.isFinite(n) || n <= 0 || n > 1) throw new BadRequest("invalid amount")
+        args.push("--amount", String(n))
+      }
+      return call(args)
+    },
+
+    async createWorkspace({ cwd, label } = {}) {
+      const args = ["workspace", "create"]
+      if (cwd) args.push("--cwd", requirePath(cwd, "cwd"))
+      if (label) args.push("--label", requireLabel(label))
+      args.push("--no-focus")
+      return call(args)
+    },
+    focusWorkspace: async (id) => call(["workspace", "focus", requireId(id, "workspace id")]),
+    renameWorkspace: async (id, label) => call(["workspace", "rename", requireId(id, "workspace id"), requireLabel(label)]),
+    closeWorkspace: async (id) => call(["workspace", "close", requireId(id, "workspace id")]),
+
+    async createTab({ workspace, cwd, label } = {}) {
+      const args = ["tab", "create"]
+      if (workspace) args.push("--workspace", requireId(workspace, "workspace id"))
+      if (cwd) args.push("--cwd", requirePath(cwd, "cwd"))
+      if (label) args.push("--label", requireLabel(label))
+      args.push("--no-focus")
+      return call(args)
+    },
+    focusTab: async (id) => call(["tab", "focus", requireId(id, "tab id")]),
+    renameTab: async (id, label) => call(["tab", "rename", requireId(id, "tab id"), requireLabel(label)]),
+    closeTab: async (id) => call(["tab", "close", requireId(id, "tab id")]),
+
+    async createWorktree({ workspace, cwd, branch, base, path, label } = {}) {
+      const args = ["worktree", "create"]
+      if (workspace) args.push("--workspace", requireId(workspace, "workspace id"))
+      else if (cwd) args.push("--cwd", requirePath(cwd, "cwd"))
+      args.push("--branch", requireLabel(branch, "branch"))
+      if (base) args.push("--base", requireLabel(base, "base"))
+      if (path) args.push("--path", requirePath(path))
+      if (label) args.push("--label", requireLabel(label))
+      args.push("--no-focus")
+      return call(args)
+    },
+
+    async openWorktree({ path, branch, label } = {}) {
+      const args = ["worktree", "open"]
+      if (path) args.push("--path", requirePath(path))
+      else if (branch) args.push("--branch", requireLabel(branch, "branch"))
+      else throw new BadRequest("open needs path or branch")
+      if (label) args.push("--label", requireLabel(label))
+      args.push("--no-focus")
+      return call(args)
+    },
+
+    async removeWorktree(workspace, force) {
+      const args = ["worktree", "remove", "--workspace", requireId(workspace, "workspace id")]
+      if (force) args.push("--force")
+      return call(args)
+    },
+
+    async notify({ title, body, position, sound } = {}) {
+      const args = ["notification", "show", requireLabel(title, "title")]
+      if (body) args.push("--body", requireText(body, "body"))
+      if (position) args.push("--position", requireEnum(position, POSITIONS, "position"))
+      if (sound) args.push("--sound", requireEnum(sound, SOUNDS, "sound"))
+      return call(args)
     },
   }
 }
