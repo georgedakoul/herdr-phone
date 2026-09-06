@@ -2,8 +2,8 @@
 
 A phone-sized web view of the [Herdr](https://herdr.dev) session running on your desktop.
 See which agents are blocked, read what they said, answer them, press esc or enter, look at
-the raw terminal, and run plugin actions. Add it to your home screen and it behaves like an
-app.
+the raw terminal, start new agents, rearrange the layout, and run plugin actions. Add it to
+your home screen and it behaves like an app.
 
 It is one Node process with no dependencies. It shells out to the `herdr` CLI that is
 already on the machine, so it never talks to the Herdr server socket directly and never
@@ -17,16 +17,25 @@ needs an API key.
 - Show an agent's recent output and send it a prompt.
 - Send `esc`, `enter`, `yes`, `no`, `up`, `down`.
 - Show the agent's pane as it looks in the terminal, colours included.
-- List worktrees and which workspace has them open.
+- Start an agent: pick a name, a kind, and the pane to split for it.
+- Rename an agent, focus it, read what `agent explain` says, or wait for it to go idle or blocked.
+- See the whole layout, workspaces down to panes, with focus and agent status on each node.
+- Create and close workspaces, tabs and panes. Split right or down, zoom, rename, move a pane
+  to a new tab or workspace, swap two panes, resize.
+- Run a command in a pane, or send it raw text or a single key.
+- Create, open, focus and remove worktrees.
 - List plugin actions and run one.
+- Send a desktop notification.
 
-It does not create or close panes, change layouts, edit files, or run git. Use the desktop
-for that.
+It does not manage the Herdr server itself: no start, stop, update, channel switch or
+integration install. Use the desktop for that.
 
 ## Read this before you expose it
 
 Anyone who has the token can type into your agents. An agent will happily run a shell
-command it is asked to run, so the token is the same thing as a shell on your machine.
+command it is asked to run, so the token is the same thing as a shell on your machine. It can
+also run a command in a pane directly, with no agent involved, so that stays true even when
+nothing is listening.
 
 - Keep the app inside your tailnet, or on the LAN behind something you trust. Never put it
   on the public internet. **Do not use Tailscale Funnel with it.** `tailscale serve` keeps

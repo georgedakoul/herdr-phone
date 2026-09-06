@@ -101,9 +101,10 @@ Derived from `docs/main/intent.md`. Upstream requirement: `fedora-box/docs/main/
 
 ## Out of scope
 
-Creating agents or panes, closing them, splitting layouts, editing files, git operations, push
-notifications, multi-user accounts, and any write to Herdr beyond prompt, keys and plugin action
-invoke. Read plus reply is the whole product.
+Editing files, git operations, push notifications, multi-user accounts, and managing the Herdr
+server itself. Read plus reply was the whole product in this version. Creating agents, panes,
+tabs, workspaces and worktrees, closing them, and changing the layout moved into scope on
+2026-09-06, see `docs/full-control/spec.md`.
 
 ## Changelog
 
@@ -111,3 +112,6 @@ invoke. Read plus reply is the whole product.
 - 2026-09-06. R6: the stylesheet, manifest and icon are served without the cookie too, so the
   login page can render, and `POST /logout` clears the cookie whether or not it was valid.
   None of them carry session data. Found in review, no code change.
+- 2026-09-06. Out of scope narrowed: writes to the live session (create, close, layout,
+  worktrees, notifications) are now in scope. Requirements R22 to R33 live in
+  `docs/full-control/spec.md`. R1 to R21 here are unchanged.
