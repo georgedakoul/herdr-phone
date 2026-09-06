@@ -112,3 +112,9 @@ On the desktop, once it is back online, the R24 proof from the upstream plan:
   matched `test/fixture-server.js`, which listens forever and hung the run.
 - 2026-09-06, step 7: the three proof screenshots live in `docs/main/screenshots/` and the
   README links them.
+- 2026-09-06, laptop stand-in: against a real Herdr 0.8.2 server the `<target>` for
+  `agent read`, `agent prompt` and `agent send-keys` is the pane id (`w1:p3`), and the
+  terminal id answers `agent_not_found`. The phone now targets the pane id. `agent read`
+  and `pane read` print the pane text itself rather than a JSON envelope, so the client
+  treats their stdout as text and only parses a one-line error envelope. Real agents carry
+  no `name` or `tokens`; the card shows the stripped terminal title and the pane id instead.

@@ -62,20 +62,20 @@ const client = {
   async status() { return { client: { version: "0.8.2", protocol: 20 }, server: { status: "running", running: true, version: "0.8.2", protocol: 20 } } },
   async snapshot() { return { protocol: 20, agents, workspaces: [{ workspace_id: "ws-1", name: "api" }, { workspace_id: "ws-2", name: "retry" }] } },
   async agentRead(target) {
-    const agent = agents.find((a) => a.terminal_id === target)
+    const agent = agents.find((a) => a.pane_id === target || a.terminal_id === target)
     const text = transcripts[target] ?? `> Working in ${agent?.cwd ?? "?"}\n\n(no recent output)`
     return { text, truncated: false, revision, pane_id: agent?.pane_id ?? null }
   },
   async paneRead(paneId) { return { text: panes[paneId] ?? `${sgr("90", "(empty pane)")}`, truncated: false, revision } },
   async prompt(target, text) {
-    const agent = agents.find((a) => a.terminal_id === target)
+    const agent = agents.find((a) => a.pane_id === target || a.terminal_id === target)
     if (agent) { agent.agent_status = "working"; agent.revision += 1 }
     transcripts[target] = `${transcripts[target] ?? ""}\n\n> ${text}\n\nOn it.`
     revision += 1
     return { ...agent }
   },
   async sendKey(target, name) {
-    const agent = agents.find((a) => a.terminal_id === target)
+    const agent = agents.find((a) => a.pane_id === target || a.terminal_id === target)
     if (agent && name === "yes") { agent.agent_status = "working"; agent.revision += 1 }
     if (agent && name === "esc") { agent.agent_status = "idle"; agent.revision += 1 }
     revision += 1

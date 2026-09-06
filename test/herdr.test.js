@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { createClient, parseEnvelope, parseJsonOutput, checkProtocol, HerdrError, KEY_MAP, PINNED_PROTOCOL } from "../src/herdr.js"
+import { createClient, parseEnvelope, parseJsonOutput, parseReadOutput, checkProtocol, HerdrError, KEY_MAP, PINNED_PROTOCOL } from "../src/herdr.js"
 
 /** A fake run that records the argv it was given and answers from a table. */
 function fakeRun(answers) {
@@ -73,8 +73,8 @@ test("a non-zero exit with no output uses stderr", async () => {
 test("snapshot, read, prompt, keys, worktrees and actions build the documented argv", async () => {
   const { run, calls } = fakeRun({
     "api snapshot": ok({ type: "session_snapshot", snapshot: { version: 1, protocol: 20, workspaces: [], tabs: [], panes: [], layouts: [], agents: [{ terminal_id: "t1", agent_status: "blocked" }] } }),
-    "agent read": ok({ type: "pane_read", read: { pane_id: "p1", text: "hello", truncated: false } }),
-    "pane read": ok({ type: "pane_read", read: { pane_id: "p1", text: "raw", format: "ansi" } }),
+    "agent read": { stdout: "hello\r\nworld\r\n" },
+    "pane read": { stdout: "raw" },
     "agent prompt": ok({ type: "agent_prompted", agent: { terminal_id: "t1", agent_status: "working" } }),
     "agent send-keys": ok({ type: "ok" }),
     "worktree list": ok({ type: "worktree_list", source: "cwd", worktrees: [{ path: "/w", label: "w", branch: "main" }] }),
@@ -88,7 +88,7 @@ test("snapshot, read, prompt, keys, worktrees and actions build the documented a
   assert.equal(calls.at(-1).bin, "/opt/herdr")
 
   const read = await client.agentRead("t1", { lines: 99999 })
-  assert.equal(read.text, "hello")
+  assert.deepEqual(read, { text: "hello\nworld\n", truncated: false, revision: null })
   assert.deepEqual(calls.at(-1).args, ["agent", "read", "t1", "--source", "recent", "--format", "text", "--lines", "5000"])
 
   await client.agentRead("t1", { source: "visible" })
@@ -143,7 +143,7 @@ test("missing optional fields come back as empty, not as a crash", async () => {
   assert.deepEqual(await client.snapshot(), {})
   assert.deepEqual(await client.worktrees(), [])
   assert.deepEqual(await client.actions(), [])
-  assert.deepEqual(await client.agentRead("t1"), {})
+  assert.deepEqual(await client.agentRead("t1"), { text: "", truncated: false, revision: null })
   assert.deepEqual(await client.invokeAction("a"), { action: {}, log: null })
 })
 
@@ -180,4 +180,14 @@ test("checkProtocol refuses a dead server, a wrong protocol, and accepts a match
 test("the key map matches the spec", () => {
   assert.deepEqual(Object.keys(KEY_MAP).sort(), ["down", "enter", "esc", "no", "up", "yes"])
   assert.deepEqual(KEY_MAP.no, ["n", "enter"])
+})
+
+test("read output is pane text, except a one-line error envelope for a bad target", async () => {
+  assert.deepEqual(parseReadOutput("plain\r\ntext"), { text: "plain\ntext", truncated: false, revision: null })
+  assert.deepEqual(parseReadOutput('{"a": 1}\nsecond line'), { text: '{"a": 1}\nsecond line', truncated: false, revision: null })
+  assert.deepEqual(parseReadOutput("{not json"), { text: "{not json", truncated: false, revision: null })
+  assert.deepEqual(parseReadOutput(""), { text: "", truncated: false, revision: null })
+  assert.throws(() => parseReadOutput(JSON.stringify({ id: 1, error: { code: "agent_not_found", message: "no" } })), (e) => e.code === "agent_not_found")
+  const { run } = fakeRun({ "agent read": err("agent_not_found", "no such agent") })
+  await assert.rejects(createClient({ run }).agentRead("term_1"), (e) => e.code === "agent_not_found")
 })

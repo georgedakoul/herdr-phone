@@ -61,13 +61,18 @@
   }
 
   function agentName(agent) {
-    return agent.name || agent.display_agent || agent.title || agent.agent || agent.terminal_id
+    return agent.name || agent.display_agent || agent.title || agent.terminal_title_stripped || agent.agent || agent.terminal_id
+  }
+
+  // herdr addresses an agent by its pane id (w1:p3); the terminal id is agent_not_found.
+  function targetOf(agent) {
+    return agent.pane_id || agent.terminal_id
   }
 
   function renderAgents(data) {
     const agents = data.agents || []
     // Skip the DOM work when nothing changed, which keeps scroll and taps stable.
-    const revision = JSON.stringify(agents.map((a) => [a.terminal_id, a.agent_status, a.revision, a.tokens]))
+    const revision = JSON.stringify(agents.map((a) => [targetOf(a), a.agent_status, a.revision, a.tokens]))
     if (revision === state.agentsRevision) return
     state.agentsRevision = revision
     el.agents.replaceChildren()
@@ -79,11 +84,12 @@
       button.className = `card status-${agent.agent_status || "unknown"}`
       button.append(text("span", agentName(agent), "name"), text("span", agent.agent_status || "unknown", "status"))
       const meta = []
+      if (agent.pane_id) meta.push(agent.pane_id)
       if (agent.cwd) meta.push(agent.cwd)
       if (agent.tokens) meta.push(typeof agent.tokens === "object" ? JSON.stringify(agent.tokens) : `${agent.tokens} tokens`)
       if (meta.length) button.append(text("span", meta.join(" · "), "meta"))
       button.addEventListener("click", () => {
-        state.agent = agent.terminal_id
+        state.agent = targetOf(agent)
         state.paneId = agent.pane_id || null
         el.transcript.textContent = ""
         show("agent", { title: agentName(agent) })

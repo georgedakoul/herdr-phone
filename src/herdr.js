@@ -69,6 +69,27 @@ export function parseEnvelope(stdout) {
   throw new HerdrError("bad_response", "herdr returned a response with no result")
 }
 
+/**
+ * agent read and pane read print the pane text itself, not a JSON envelope. A bad
+ * target still comes back as a one-line error envelope, so that case is kept.
+ */
+export function parseReadOutput(stdout) {
+  const raw = String(stdout ?? "")
+  const trimmed = raw.trim()
+  if (trimmed.startsWith("{") && !trimmed.includes("\n")) {
+    try {
+      const body = JSON.parse(trimmed)
+      if (body && typeof body === "object" && (body.error || body.result)) {
+        const result = parseEnvelope(trimmed)
+        return result.read ?? { text: "", truncated: false, revision: null }
+      }
+    } catch (e) {
+      if (e instanceof HerdrError) throw e
+    }
+  }
+  return { text: raw.replace(/\r\n/g, "\n"), truncated: false, revision: null }
+}
+
 /** The keys the phone offers. A confirmation prompt wants the letter and then enter. */
 export const KEY_MAP = {
   esc: ["esc"],
@@ -112,16 +133,14 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       requireId(target, "agent")
       const args = ["agent", "read", target, "--source", source, "--format", "text"]
       if (lines) args.push("--lines", String(Math.max(1, Math.min(5000, Number(lines) || 0))))
-      const result = await call(args)
-      return result.read ?? {}
+      return parseReadOutput((await exec(args)).stdout)
     },
 
     async paneRead(paneId, { source = "visible", lines } = {}) {
       requireId(paneId, "pane id")
       const args = ["pane", "read", paneId, "--source", source, "--format", "ansi"]
       if (lines) args.push("--lines", String(Math.max(1, Math.min(5000, Number(lines) || 0))))
-      const result = await call(args)
-      return result.read ?? {}
+      return parseReadOutput((await exec(args)).stdout)
     },
 
     async prompt(target, text) {
