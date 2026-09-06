@@ -9,7 +9,7 @@ It is one Node process with no dependencies. It shells out to the `herdr` CLI th
 already on the machine, so it never talks to the Herdr server socket directly and never
 needs an API key.
 
-![Agents, blocked first](docs/main/screenshots/home.png) ![One agent with transcript and keys](docs/main/screenshots/agent.png) ![Terminal view with colour](docs/main/screenshots/terminal.png)
+![Agents, blocked first](docs/main/screenshots/home.png) ![One agent with transcript and keys](docs/main/screenshots/agent.png) ![Terminal view with colour](docs/main/screenshots/terminal.png) ![Menu row](docs/main/screenshots/menu.png) ![Layout tree](docs/main/screenshots/layout.png)
 
 ## What it can do
 
