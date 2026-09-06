@@ -187,8 +187,8 @@ body[data-view="actions"] #view-actions { display: flex; flex-direction: column;
   cursor: pointer;
 }
 .tree summary::-webkit-details-marker { display: none; }
-.tree summary::before { content: "B8"; color: var(--muted); grid-row: 1 / span 2; margin-right: 6px; }
-.tree details[open] summary::before { content: "BE"; }
+.tree summary::before { content: "▸"; color: var(--muted); grid-row: 1 / span 2; margin-right: 6px; }
+.tree details[open] summary::before { content: "▾"; }
 .tree summary { grid-template-columns: auto 1fr auto; }
 .tree summary .status { grid-column: 2; }
 .tree summary .more { grid-column: 3; grid-row: 1 / span 2; }
