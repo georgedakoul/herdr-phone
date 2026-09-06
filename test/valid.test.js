@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { Readable } from "node:stream"
-import { isId, requireId, BadRequest, escapeHtml, readBody, readJson, readForm, parseCookies, MAX_BODY } from "../src/valid.js"
+import { isId, requireId, BadRequest, escapeHtml, readBody, readJson, readForm, parseCookies, MAX_BODY, requireName, requireLabel, requirePath, requireText, requireEnum } from "../src/valid.js"
 
 const stream = (text) => Readable.from([Buffer.from(text)])
 
@@ -50,4 +50,35 @@ test("parseCookies splits pairs and survives bad encoding", () => {
   assert.deepEqual(parseCookies("bad=%E0%A4%A"), { bad: "%E0%A4%A" })
   assert.deepEqual(parseCookies(undefined), {})
   assert.deepEqual(parseCookies("dup=1; dup=2"), { dup: "2" })
+})
+
+test("requireName takes herdr agent names only", () => {
+  for (const ok of ["a", "docs", "api-refactor_2", "a".repeat(32)]) assert.equal(requireName(ok), ok)
+  for (const bad of ["", "Docs", "1abc", "a b", "a".repeat(33), "-x", null]) {
+    assert.throws(() => requireName(bad, "agent name"), (e) => e.status === 400 && e.message === "invalid agent name", String(bad))
+  }
+})
+
+test("labels, paths and text refuse control characters and a leading dash", () => {
+  assert.equal(requireLabel("my label"), "my label")
+  assert.equal(requirePath("/home/dev/src/app (copy)"), "/home/dev/src/app (copy)")
+  assert.equal(requireText("git status\nls"), "git status\nls")
+  assert.throws(() => requireLabel("a".repeat(121)), (e) => e.status === 400)
+  assert.throws(() => requirePath("a".repeat(513)), (e) => e.status === 400)
+  assert.throws(() => requireText("a".repeat(4001)), (e) => e.status === 400)
+  assert.throws(() => requireLabel("line\nbreak"), (e) => e.message === "invalid label")
+  assert.throws(() => requirePath("x\x1b[31m"), (e) => e.message === "invalid path")
+  assert.throws(() => requireText("a\0b", "command"), (e) => e.message === "invalid command")
+  assert.throws(() => requireLabel("--force"), (e) => e.message === 'label cannot start with "-"')
+  assert.throws(() => requireText("-rf"), (e) => e.message === 'text cannot start with "-"')
+  for (const bad of ["", "   ", 3, undefined]) {
+    assert.throws(() => requireLabel(bad), (e) => e.status === 400, String(bad))
+    assert.throws(() => requireText(bad), (e) => e.status === 400, String(bad))
+  }
+})
+
+test("requireEnum checks against a fixed list", () => {
+  assert.equal(requireEnum("right", ["right", "down"], "direction"), "right")
+  assert.throws(() => requireEnum("left", ["right", "down"], "direction"), (e) => e.message === "invalid direction")
+  assert.throws(() => requireEnum("constructor", ["right"], "direction"), (e) => e.status === 400)
 })

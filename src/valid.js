@@ -89,3 +89,46 @@ export function parseCookies(header) {
   }
   return out
 }
+
+/** herdr agent names: lower case, start with a letter, at most 32 characters. */
+export const AGENT_NAME = /^[a-z][a-z0-9_-]{0,31}$/
+
+export function requireName(value, what = "name") {
+  if (typeof value !== "string" || !AGENT_NAME.test(value)) throw new BadRequest(`invalid ${what}`)
+  return value
+}
+
+/** No control characters, so a value can never carry a newline or an escape into herdr. */
+const PRINTABLE = /^[^\x00-\x1f\x7f]+$/
+
+/**
+ * Free text that lands in a positional slot. herdr reads a leading "-" as an option,
+ * so that shape is refused rather than passed on to fail somewhere less clear.
+ */
+function requirePrintable(value, what, max) {
+  if (typeof value !== "string" || !value.trim() || value.length > max || !PRINTABLE.test(value)) {
+    throw new BadRequest(`invalid ${what}`)
+  }
+  if (value.startsWith("-")) throw new BadRequest(`${what} cannot start with "-"`)
+  return value
+}
+
+/** Labels, titles, branch names: short, one line. */
+export const requireLabel = (value, what = "label") => requirePrintable(value, what, 120)
+
+/** Paths, refs: longer, still one line. */
+export const requirePath = (value, what = "path") => requirePrintable(value, what, 512)
+
+/** Commands and text typed into a pane. Newlines are fine, NUL is not. */
+export function requireText(value, what = "text") {
+  if (typeof value !== "string" || !value.trim() || value.length > 4000 || value.includes("\0")) {
+    throw new BadRequest(`invalid ${what}`)
+  }
+  if (value.startsWith("-")) throw new BadRequest(`${what} cannot start with "-"`)
+  return value
+}
+
+export function requireEnum(value, list, what) {
+  if (!list.includes(value)) throw new BadRequest(`invalid ${what}`)
+  return value
+}
