@@ -103,8 +103,11 @@ criterion 6 holds apart from the phone and `tailscale serve`. The app started wi
 pointing at the installed binary, the browser at 390x844 listed the same two idle Claude Code
 panes that `herdr agent list` prints, opened one and showed its transcript, and the terminal
 view rendered the pane with colour (39 styled spans). Send-keys landed: an `esc` posted to an
-idle pane answered `{"ok":true,"sent":["esc"]}`. Criterion 7 waits for George's go because a
-prompt types into his live session. Criterion 8 still waits for the desktop.
+idle pane answered `{"ok":true,"sent":["esc"]}`. Criterion 7 passed later the same day, with
+George's go, in a throwaway workspace the app created with `--no-focus`: the app started a Claude
+agent there, posted "Reply with exactly the word PONG and nothing else.", the wait route came back
+idle, the read route returned the pane with the prompt and `● PONG` under it, and the workspace was
+closed through the app. His own panes were not touched. Criterion 8 still waits for the desktop.
 
 ## Departures
 
