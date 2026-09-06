@@ -117,7 +117,90 @@ export function createApp({ client, token }) {
       const result = await client.invokeAction(String(body.action_id ?? ""), pluginId)
       return { ok: true, ...result }
     },
+
+    // Full control. The client validates every field and builds the argv, so a route
+    // only picks the fields out of the body. Anything wrong is a BadRequest from there.
+    "GET /api/kinds": () => client.kinds(),
+    "GET /api/layout": async () => {
+      const s = await client.snapshot()
+      return {
+        workspaces: s.workspaces ?? [],
+        tabs: s.tabs ?? [],
+        panes: s.panes ?? [],
+        zoomed: (s.layouts ?? []).filter((l) => l.zoomed).map((l) => l.focused_pane_id).filter(Boolean),
+        focused_workspace_id: s.focused_workspace_id ?? null,
+        focused_tab_id: s.focused_tab_id ?? null,
+        focused_pane_id: s.focused_pane_id ?? null,
+      }
+    },
+    "POST /api/agents/start": async ({ req }) => {
+      const b = await readJson(req)
+      return { ok: true, ...(await client.startAgent(pick(b, "name", "kind", "pane", "direction", "cwd", "timeout"))) }
+    },
+    "POST /api/agent/:target/rename": async ({ target, req }) => done(client.renameAgent(target, await nameOrClear(req, "name"))),
+    "POST /api/agent/:target/focus": ({ target }) => done(client.focusAgent(target)),
+    "GET /api/agent/:target/explain": ({ target }) => client.explainAgent(target),
+    "POST /api/agent/:target/wait": async ({ target, req }) => {
+      const b = await readJson(req)
+      return { ok: true, agent: await client.waitAgent(target, pick(b, "until", "timeout")) }
+    },
+    "POST /api/pane/:target/split": async ({ target, req }) => {
+      const b = await readJson(req)
+      return { ok: true, pane: await client.splitPane(target, pick(b, "direction", "cwd")) }
+    },
+    "POST /api/pane/:target/close": ({ target }) => done(client.closePane(target)),
+    "POST /api/pane/:target/zoom": async ({ target, req }) => done(client.zoomPane(target, (await readJson(req)).mode ?? "toggle")),
+    "POST /api/pane/:target/rename": async ({ target, req }) => done(client.renamePane(target, await nameOrClear(req, "label"))),
+    "POST /api/pane/:target/run": async ({ target, req }) => done(client.runInPane(target, (await readJson(req)).command)),
+    "POST /api/pane/:target/text": async ({ target, req }) => done(client.sendText(target, (await readJson(req)).text)),
+    "POST /api/pane/:target/keys": async ({ target, req }) => {
+      const key = String((await readJson(req)).key ?? "")
+      return { ok: true, ...(await client.paneSendKey(target, key)) }
+    },
+    "POST /api/pane/:target/move": async ({ target, req }) => done(client.movePane(target, await readJson(req))),
+    "POST /api/pane/:target/swap": async ({ target, req }) => done(client.swapPanes(target, (await readJson(req)).with)),
+    "POST /api/pane/:target/resize": async ({ target, req }) => {
+      const b = await readJson(req)
+      return done(client.resizePane(target, b.direction, b.amount))
+    },
+    "POST /api/workspaces": async ({ req }) => done(client.createWorkspace(pick(await readJson(req), "cwd", "label"))),
+    "POST /api/workspace/:target/focus": ({ target }) => done(client.focusWorkspace(target)),
+    "POST /api/workspace/:target/rename": async ({ target, req }) => done(client.renameWorkspace(target, (await readJson(req)).label)),
+    "POST /api/workspace/:target/close": ({ target }) => done(client.closeWorkspace(target)),
+    "POST /api/tabs": async ({ req }) => done(client.createTab(pick(await readJson(req), "workspace", "cwd", "label"))),
+    "POST /api/tab/:target/focus": ({ target }) => done(client.focusTab(target)),
+    "POST /api/tab/:target/rename": async ({ target, req }) => done(client.renameTab(target, (await readJson(req)).label)),
+    "POST /api/tab/:target/close": ({ target }) => done(client.closeTab(target)),
+    "POST /api/worktrees": async ({ req }) =>
+      done(client.createWorktree(pick(await readJson(req), "workspace", "cwd", "branch", "base", "path", "label"))),
+    "POST /api/worktrees/open": async ({ req }) => done(client.openWorktree(pick(await readJson(req), "path", "branch", "label"))),
+    "POST /api/worktrees/remove": async ({ req }) => {
+      const b = await readJson(req)
+      return done(client.removeWorktree(b.workspace, Boolean(b.force)))
+    },
+    "POST /api/notify": async ({ req }) => done(client.notify(pick(await readJson(req), "title", "body", "position", "sound"))),
   }
+
+  /** The named fields only, as strings, so a body cannot smuggle extra options into a client call. */
+  function pick(body, ...names) {
+    const out = {}
+    for (const name of names) {
+      const value = body[name]
+      if (value === undefined || value === null || value === "") continue
+      out[name] = Array.isArray(value) ? value.map(String) : typeof value === "number" ? value : String(value)
+    }
+    return out
+  }
+
+  /** A rename body carries the new value, or clear:true. */
+  async function nameOrClear(req, field) {
+    const body = await readJson(req)
+    if (body.clear === true) return null
+    return body[field]
+  }
+
+  /** Writes answer ok plus whatever herdr returned, which the phone shows or ignores. */
+  const done = async (promise) => ({ ok: true, result: (await promise) ?? null })
 
   /** Ids such as "w1:p1" arrive percent encoded. A malformed escape becomes an empty id, which fails requireId with a 400. */
   const decodeSegment = (segment) => {
