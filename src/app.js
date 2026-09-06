@@ -119,34 +119,35 @@ export function createApp({ client, token }) {
     },
 
     // Full control. The client validates every field and builds the argv, so a route
-    // only picks the fields out of the body. Anything wrong is a BadRequest from there.
+    // only hands the body fields over, through pick() where a call takes an options object.
+    // Anything wrong is a BadRequest from there.
     "GET /api/kinds": () => client.kinds(),
     "GET /api/layout": async () => {
-      const s = await client.snapshot()
+      const snapshot = await client.snapshot()
       return {
-        workspaces: s.workspaces ?? [],
-        tabs: s.tabs ?? [],
-        panes: s.panes ?? [],
-        zoomed: (s.layouts ?? []).filter((l) => l.zoomed).map((l) => l.focused_pane_id).filter(Boolean),
-        focused_workspace_id: s.focused_workspace_id ?? null,
-        focused_tab_id: s.focused_tab_id ?? null,
-        focused_pane_id: s.focused_pane_id ?? null,
+        workspaces: snapshot.workspaces ?? [],
+        tabs: snapshot.tabs ?? [],
+        panes: snapshot.panes ?? [],
+        zoomed: (snapshot.layouts ?? []).filter((l) => l.zoomed).map((l) => l.focused_pane_id).filter(Boolean),
+        focused_workspace_id: snapshot.focused_workspace_id ?? null,
+        focused_tab_id: snapshot.focused_tab_id ?? null,
+        focused_pane_id: snapshot.focused_pane_id ?? null,
       }
     },
     "POST /api/agents/start": async ({ req }) => {
-      const b = await readJson(req)
-      return { ok: true, ...(await client.startAgent(pick(b, "name", "kind", "pane", "direction", "cwd", "timeout"))) }
+      const body = await readJson(req)
+      return { ok: true, ...(await client.startAgent(pick(body, "name", "kind", "pane", "direction", "cwd", "timeout"))) }
     },
     "POST /api/agent/:target/rename": async ({ target, req }) => done(client.renameAgent(target, await nameOrClear(req, "name"))),
     "POST /api/agent/:target/focus": ({ target }) => done(client.focusAgent(target)),
     "GET /api/agent/:target/explain": ({ target }) => client.explainAgent(target),
     "POST /api/agent/:target/wait": async ({ target, req }) => {
-      const b = await readJson(req)
-      return { ok: true, agent: await client.waitAgent(target, pick(b, "until", "timeout")) }
+      const body = await readJson(req)
+      return { ok: true, agent: await client.waitAgent(target, pick(body, "until", "timeout")) }
     },
     "POST /api/pane/:target/split": async ({ target, req }) => {
-      const b = await readJson(req)
-      return { ok: true, pane: await client.splitPane(target, pick(b, "direction", "cwd")) }
+      const body = await readJson(req)
+      return { ok: true, pane: await client.splitPane(target, pick(body, "direction", "cwd")) }
     },
     "POST /api/pane/:target/close": ({ target }) => done(client.closePane(target)),
     "POST /api/pane/:target/zoom": async ({ target, req }) => done(client.zoomPane(target, (await readJson(req)).mode ?? "toggle")),
@@ -160,8 +161,8 @@ export function createApp({ client, token }) {
     "POST /api/pane/:target/move": async ({ target, req }) => done(client.movePane(target, await readJson(req))),
     "POST /api/pane/:target/swap": async ({ target, req }) => done(client.swapPanes(target, (await readJson(req)).with)),
     "POST /api/pane/:target/resize": async ({ target, req }) => {
-      const b = await readJson(req)
-      return done(client.resizePane(target, b.direction, b.amount))
+      const body = await readJson(req)
+      return done(client.resizePane(target, body.direction, body.amount))
     },
     "POST /api/workspaces": async ({ req }) => done(client.createWorkspace(pick(await readJson(req), "cwd", "label"))),
     "POST /api/workspace/:target/focus": ({ target }) => done(client.focusWorkspace(target)),
@@ -175,8 +176,8 @@ export function createApp({ client, token }) {
       done(client.createWorktree(pick(await readJson(req), "workspace", "cwd", "branch", "base", "path", "label"))),
     "POST /api/worktrees/open": async ({ req }) => done(client.openWorktree(pick(await readJson(req), "path", "branch", "label"))),
     "POST /api/worktrees/remove": async ({ req }) => {
-      const b = await readJson(req)
-      return done(client.removeWorktree(b.workspace, Boolean(b.force)))
+      const body = await readJson(req)
+      return done(client.removeWorktree(body.workspace, Boolean(body.force)))
     },
     "POST /api/notify": async ({ req }) => done(client.notify(pick(await readJson(req), "title", "body", "position", "sound"))),
   }

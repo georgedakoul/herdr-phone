@@ -89,3 +89,6 @@ layout editing. Session management.
 ## Changelog
 
 - 2026-09-06: created. Approved by George's go to finish the whole thing.
+- 2026-09-06, after review: R27 also moves a pane into an existing tab and the workspace
+  sheet offers "New tab here", both from the intent to copy every Herdr control. R24's
+  start route accepts an optional `cwd`, which the form does not send.

@@ -260,10 +260,11 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       }
     },
 
-    renameAgent: async (target, name) =>
-      rename("agent", requireId(target, "agent"), name, (v) => requireName(v, "agent name")),
+    async renameAgent(target, name) {
+      return rename("agent", requireId(target, "agent"), name, (v) => requireName(v, "agent name"))
+    },
 
-    focusAgent: async (target) => call(["agent", "focus", requireId(target, "agent")]),
+    async focusAgent(target) { return call(["agent", "focus", requireId(target, "agent")]) },
 
     /** Plain text, the same thing a terminal user reads. */
     async explainAgent(target) {
@@ -294,18 +295,21 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       return created
     },
 
-    closePane: async (paneId) => call(["pane", "close", requireId(paneId, "pane id")]),
+    async closePane(paneId) { return call(["pane", "close", requireId(paneId, "pane id")]) },
 
-    zoomPane: async (paneId, mode = "toggle") =>
-      call(["pane", "zoom", requireId(paneId, "pane id"), `--${requireEnum(mode, ZOOM_MODES, "zoom mode")}`]),
+    async zoomPane(paneId, mode = "toggle") {
+      return call(["pane", "zoom", requireId(paneId, "pane id"), `--${requireEnum(mode, ZOOM_MODES, "zoom mode")}`])
+    },
 
-    renamePane: async (paneId, label) =>
-      rename("pane", requireId(paneId, "pane id"), label, (v) => requireLabel(v, "label")),
+    async renamePane(paneId, label) {
+      return rename("pane", requireId(paneId, "pane id"), label, (v) => requireLabel(v, "label"))
+    },
 
-    runInPane: async (paneId, command) =>
-      call(["pane", "run", requireId(paneId, "pane id"), requireText(command, "command")]),
+    async runInPane(paneId, command) {
+      return call(["pane", "run", requireId(paneId, "pane id"), requireText(command, "command")])
+    },
 
-    sendText: async (paneId, text) => call(["pane", "send-text", requireId(paneId, "pane id"), requireText(text, "text")]),
+    async sendText(paneId, text) { return call(["pane", "send-text", requireId(paneId, "pane id"), requireText(text, "text")]) },
 
     async paneSendKey(paneId, name) {
       requireId(paneId, "pane id")
@@ -334,8 +338,9 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       return call(args)
     },
 
-    swapPanes: async (source, target) =>
-      call(["pane", "swap", "--source-pane", requireId(source, "pane id"), "--target-pane", requireId(target, "pane id")]),
+    async swapPanes(source, target) {
+      return call(["pane", "swap", "--source-pane", requireId(source, "pane id"), "--target-pane", requireId(target, "pane id")])
+    },
 
     async resizePane(paneId, direction, amount) {
       const args = ["pane", "resize", "--pane", requireId(paneId, "pane id")]
@@ -355,9 +360,9 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       args.push("--no-focus")
       return call(args)
     },
-    focusWorkspace: async (id) => call(["workspace", "focus", requireId(id, "workspace id")]),
-    renameWorkspace: async (id, label) => call(["workspace", "rename", requireId(id, "workspace id"), requireLabel(label)]),
-    closeWorkspace: async (id) => call(["workspace", "close", requireId(id, "workspace id")]),
+    async focusWorkspace(id) { return call(["workspace", "focus", requireId(id, "workspace id")]) },
+    async renameWorkspace(id, label) { return call(["workspace", "rename", requireId(id, "workspace id"), requireLabel(label)]) },
+    async closeWorkspace(id) { return call(["workspace", "close", requireId(id, "workspace id")]) },
 
     async createTab({ workspace, cwd, label } = {}) {
       const args = ["tab", "create"]
@@ -367,9 +372,9 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       args.push("--no-focus")
       return call(args)
     },
-    focusTab: async (id) => call(["tab", "focus", requireId(id, "tab id")]),
-    renameTab: async (id, label) => call(["tab", "rename", requireId(id, "tab id"), requireLabel(label)]),
-    closeTab: async (id) => call(["tab", "close", requireId(id, "tab id")]),
+    async focusTab(id) { return call(["tab", "focus", requireId(id, "tab id")]) },
+    async renameTab(id, label) { return call(["tab", "rename", requireId(id, "tab id"), requireLabel(label)]) },
+    async closeTab(id) { return call(["tab", "close", requireId(id, "tab id")]) },
 
     async createWorktree({ workspace, cwd, branch, base, path, label } = {}) {
       const args = ["worktree", "create"]
