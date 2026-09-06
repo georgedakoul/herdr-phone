@@ -162,6 +162,7 @@ body[data-view="actions"] #view-actions { display: flex; flex-direction: column;
   scrollbar-width: none;
 }
 
+.menu-row[hidden] { display: none; }
 .menu-row::-webkit-scrollbar { display: none; }
 .menu-row button { flex: 0 0 auto; border-radius: 8px; }
 .menu-row [aria-current="page"] { background: var(--line); border-color: var(--accent); }
