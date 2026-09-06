@@ -70,9 +70,11 @@ Spec: `spec.md` at the commit that adds it.
   `test/app.test.js` was already long, so the route cases went into `test/routes.test.js`
   and the client method argv cases into `test/control.test.js`. Same runner, same style,
   `npm test` picks both up.
-- **A media query the plan did not name.** R31 reflow needed the transcript to keep
-  `white-space: pre-wrap` on narrow viewports only, so `public/style.css` carries a
-  `max-width: 640px` block. Wider viewports keep the raw `pre` text as before.
+- **A media query the plan did not name.** The raw terminal view is `white-space: pre`,
+  so on a phone the Claude Code status line ran off the right edge. `public/style.css`
+  carries a `max-width: 640px` block that switches `.terminal` to `pre-wrap` at phone
+  widths only. Wider viewports keep the raw `pre` text as before. The transcript was
+  already `pre-wrap` at every width, R31 reflows it in JS.
 - **The fixture was lying about `agent_session`.** It modelled it as a human readable name.
   The real server always sends an object (`{agent, kind, source, value}`), a user set name
   arrives only in `name`, and `pane list` carries no `name` at all. `test/fixture-server.js`
@@ -92,3 +94,6 @@ Spec: `spec.md` at the commit that adds it.
   passes `--no-focus`, but `herdr pane zoom` has no such flag on 0.8.2, so zooming from the
   phone pulls the desktop's focus to that pane. Server behaviour, not something this app can
   prevent.
+- **Two review findings fixed after build.** The bottom safe-area inset went with the tab
+  bar, so the keys row could sit under the home indicator (R14); `main` now carries it.
+  Branch and base ref were capped at 120 characters where R30 says 512.

@@ -375,8 +375,8 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
       const args = ["worktree", "create"]
       if (workspace) args.push("--workspace", requireId(workspace, "workspace id"))
       else if (cwd) args.push("--cwd", requirePath(cwd, "cwd"))
-      args.push("--branch", requireLabel(branch, "branch"))
-      if (base) args.push("--base", requireLabel(base, "base"))
+      args.push("--branch", requirePath(branch, "branch"))
+      if (base) args.push("--base", requirePath(base, "base"))
       if (path) args.push("--path", requirePath(path))
       if (label) args.push("--label", requireLabel(label))
       args.push("--no-focus")
@@ -386,7 +386,7 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
     async openWorktree({ path, branch, label } = {}) {
       const args = ["worktree", "open"]
       if (path) args.push("--path", requirePath(path))
-      else if (branch) args.push("--branch", requireLabel(branch, "branch"))
+      else if (branch) args.push("--branch", requirePath(branch, "branch"))
       else throw new BadRequest("open needs path or branch")
       if (label) args.push("--label", requireLabel(label))
       args.push("--no-focus")

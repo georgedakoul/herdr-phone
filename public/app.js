@@ -307,8 +307,8 @@
     let layout
     try { layout = await api("/api/layout") } catch (error) { setNet(error.message, true); return }
     const values = await openForm("New worktree", [
-      { name: "branch", label: "Branch", required: true, placeholder: "feat/thing", maxlength: 120 },
-      { name: "base", label: "Base ref", placeholder: "main (optional)", maxlength: 120 },
+      { name: "branch", label: "Branch", required: true, placeholder: "feat/thing", maxlength: 512 },
+      { name: "base", label: "Base ref", placeholder: "main (optional)", maxlength: 512 },
       { name: "workspace", label: "From workspace", type: "select", options: [{ value: "", label: "use the directory below" }, ...layout.workspaces.map((w) => ({ value: w.workspace_id, label: w.label || w.workspace_id }))], value: layout.focused_workspace_id },
       { name: "cwd", label: "Repository directory", placeholder: "only if no workspace is chosen" },
       { name: "path", label: "Worktree path", placeholder: "optional" },
