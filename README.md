@@ -37,6 +37,10 @@ nothing is listening.
   on the public internet. **Do not use Tailscale Funnel with it.** `tailscale serve` keeps
   it on the tailnet, Funnel opens it to the world.
 - The token is a password. Do not paste it into chat, screenshots or scripts.
+- Wrong passwords are throttled. Three in a row from the same source are free, after that the
+  source is refused for a wait that doubles from two seconds up to five minutes. The right
+  password clears it at once. The wait is capped rather than being a lock, so nobody can shut
+  you out of your own app by failing on purpose.
 - The app only binds to `127.0.0.1` unless you tell it otherwise. If you set `HOST` to
   anything else it prints a warning, and you should have a reason.
 
@@ -77,6 +81,15 @@ All settings are environment variables. There is no config file.
 | `HERDR_PROTOCOL` | `20` | Protocol version to accept. Only change it to try a newer Herdr. |
 | `HOST` | `127.0.0.1` | Address to bind. Anything else prints a warning. |
 | `PORT` | `8787` | Port to bind. |
+| `HERDR_PHONE_SMTP_USER` | unset | Mail account the alerts are sent from. Alerts are off until this and the password are both set. |
+| `HERDR_PHONE_SMTP_PASS` | unset | App password for that account. Not your normal password. |
+| `HERDR_PHONE_ALERT_TO` | the SMTP user | Where alerts land. |
+| `HERDR_PHONE_SMTP_HOST` | `smtp.gmail.com` | SMTP server, implicit TLS. |
+| `HERDR_PHONE_SMTP_PORT` | `465` | SMTP port. |
+
+With the two SMTP variables set, the app sends one mail when a source first hits the wait, and
+one more if that source later signs in successfully. Mail that fails is logged to stderr and
+never delays or blocks a login.
 
 ## Reach it from your phone with Tailscale
 

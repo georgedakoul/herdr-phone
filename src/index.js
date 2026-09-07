@@ -4,6 +4,7 @@ import { createServer } from "node:http"
 import { randomBytes } from "node:crypto"
 import { createClient, checkProtocol, PINNED_PROTOCOL } from "./herdr.js"
 import { createApp } from "./app.js"
+import { mailerFromEnv } from "./mail.js"
 
 const env = process.env
 const bin = env.HERDR_BIN || "herdr"
@@ -33,7 +34,19 @@ if (!check.ok) fail(check.message)
 const generated = !env.HERDR_PHONE_TOKEN
 const token = env.HERDR_PHONE_TOKEN || randomBytes(24).toString("base64url")
 
-const server = createServer(createApp({ client, token }))
+// Alerts are optional. Configuration that is present but wrong says so and stays off, rather
+// than stopping a server that is otherwise fine.
+let alert = null
+let alertNote = "login alerts are off, set HERDR_PHONE_SMTP_USER and HERDR_PHONE_SMTP_PASS to turn them on"
+try {
+  alert = mailerFromEnv(env)
+  // The address itself is never printed, same rule as the token.
+  if (alert) alertNote = "login alerts are on"
+} catch (error) {
+  alertNote = `login alerts are off, ${error.message}`
+}
+
+const server = createServer(createApp({ client, token, alert }))
 server.on("error", (error) => fail(error.code === "EADDRINUSE" ? `${host}:${port} is already in use` : error.message))
 server.listen(port, host, () => {
   const loopback = host === "127.0.0.1" || host === "::1" || host === "localhost"
@@ -41,6 +54,7 @@ server.listen(port, host, () => {
   if (!loopback) {
     console.warn(`herdr-phone: WARNING listening on ${host}, which is not loopback. Anyone who reaches this port and has the token can type into your agents.`)
   }
+  console.log(`herdr-phone: ${alertNote}`)
   console.log(`herdr-phone: open http://${host}:${port}/login`)
   if (generated) console.log(`herdr-phone: token (generated for this run, not saved anywhere): ${token}`)
 })

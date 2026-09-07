@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 import { BadRequest, readJson, readForm, parseCookies, escapeHtml, requireId } from "./valid.js"
 import { ansiToHtml } from "./ansi.js"
 import { KEY_MAP } from "./herdr.js"
+import { createGate, GLOBAL } from "./gate.js"
 
 const PUBLIC_DIR = fileURLToPath(new URL("../public/", import.meta.url))
 export const COOKIE = "herdr_phone"
@@ -33,6 +34,18 @@ export const sortAgents = (agents) =>
   [...agents].sort((a, b) => statusRank(a.agent_status) - statusRank(b.agent_status))
 
 const isSecure = (req) => Boolean(req.socket?.encrypted) || req.headers["x-forwarded-proto"] === "https"
+
+/**
+ * Who a login attempt is being counted against. Behind `tailscale serve` every connection
+ * arrives from 127.0.0.1, so the socket address alone tells us nothing and these headers are
+ * what separate one phone from another. A process on this machine can forge them, which is why
+ * a global counter sits underneath this one.
+ */
+export const sourceOf = (req) => {
+  const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim()
+  const account = String(req.headers["tailscale-user-login"] ?? "").trim()
+  return `${forwarded || req.socket?.remoteAddress || "unknown"} ${account}`.trim()
+}
 
 const cookieHeader = (value, req, maxAge) =>
   [`${COOKIE}=${encodeURIComponent(value)}`, "Path=/", "HttpOnly", "SameSite=Strict", `Max-Age=${maxAge}`, isSecure(req) ? "Secure" : ""]
@@ -81,8 +94,31 @@ ${message ? `<p class="error" role="alert">${escapeHtml(message)}</p>` : ""}
 `
 }
 
-export function createApp({ client, token }) {
+export function createApp({ client, token, alert = null }) {
   if (!token) throw new Error("createApp needs a token, auth is not optional")
+
+  // Per device, then a backstop that no forged header can dodge.
+  const perSource = createGate()
+  const anyone = createGate({ free: 10 })
+
+  /**
+   * Queued as a microtask, so the response is already written by the time the SMTP session
+   * starts. A login must never wait on mail, or fail because mail failed.
+   */
+  const notify = (subject, lines) => {
+    if (!alert) return
+    Promise.resolve()
+      .then(() => alert({ subject, body: lines.join("\n") }))
+      .catch((error) => console.error(`herdr-phone: alert not sent: ${error.message}`))
+  }
+
+  const details = (req, key) => [
+    `Source: ${key}`,
+    `Browser: ${req.headers["user-agent"] ?? "none sent"}`,
+    `Time: ${new Date().toISOString()}`,
+    "",
+    "These details come from request headers and are a label, not proof of who it was.",
+  ]
 
   const routes = {
     "GET /api/agents": async () => {
@@ -237,8 +273,34 @@ export function createApp({ client, token }) {
         if (method === "GET") return html(res, 200, loginPage())
         if (method === "POST") {
           const form = await readForm(req)
+          const key = sourceOf(req)
+          const waits = [perSource.check(key), anyone.check(GLOBAL)].filter((result) => !result.ok)
+          if (waits.length) {
+            // Refuse outright rather than sleeping. Holding the socket open for the wait would
+            // hand out a cheaper attack than the one being prevented.
+            const retryAfter = Math.max(...waits.map((result) => result.retryAfter))
+            return html(res, 429, loginPage(`Too many wrong tries. Try again in ${retryAfter}s.`), { "Retry-After": String(retryAfter) })
+          }
           if (tokenMatches(form.token, token)) {
+            const source = perSource.pass(key)
+            const overall = anyone.pass(GLOBAL)
+            if (source.hadTripped || overall.hadTripped) {
+              notify("herdr-phone: signed in after failed tries", [
+                "Someone signed in successfully from a source that had been refused for guessing.",
+                ...details(req, key),
+              ])
+            }
             return send(res, 303, "", { Location: "/", "Set-Cookie": cookieHeader(token, req, 60 * 60 * 24 * 365) })
+          }
+          const source = perSource.fail(key)
+          const overall = anyone.fail(GLOBAL)
+          const tripped = source.tripped ? source : overall.tripped ? overall : null
+          if (tripped) {
+            notify("herdr-phone: too many wrong passwords", [
+              `${tripped.fails} wrong passwords in a row.`,
+              `Further tries are refused for ${Math.round(tripped.waitMs / 1000)}s, doubling after that.`,
+              ...details(req, key),
+            ])
           }
           return html(res, 401, loginPage("That token did not match."))
         }
