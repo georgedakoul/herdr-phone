@@ -92,3 +92,7 @@ layout editing. Session management.
 - 2026-09-06, after review: R27 also moves a pane into an existing tab and the workspace
   sheet offers "New tab here", both from the intent to copy every Herdr control. R24's
   start route accepts an optional `cwd`, which the form does not send.
+- 2026-09-07: R28's "more" button removed from the agent view along with the key row, on
+  George's ask. The sheet's code is still in `public/app.js`. Zoom, run, send text, rename
+  and close are reachable through the Layout view's pane sheet. Agent rename, focus, explain
+  and wait are not reachable from the UI now, though their routes still work.

@@ -1,24 +1,20 @@
 # herdr-phone
 
 A phone-sized web view of the [Herdr](https://herdr.dev) session running on your desktop.
-See which agents are blocked, read what they said, answer them, press esc or enter, look at
-the raw terminal, start new agents, rearrange the layout, and run plugin actions. Add it to
-your home screen and it behaves like an app.
+See which agents are blocked, read what they said, answer them, start new agents, rearrange
+the layout, and run plugin actions. Add it to your home screen and it behaves like an app.
 
 It is one Node process with no dependencies. It shells out to the `herdr` CLI that is
 already on the machine, so it never talks to the Herdr server socket directly and never
 needs an API key.
 
-![Agents, blocked first](docs/main/screenshots/home.png) ![One agent with transcript and keys](docs/main/screenshots/agent.png) ![Terminal view with colour](docs/main/screenshots/terminal.png) ![Menu row](docs/main/screenshots/menu.png) ![Layout tree](docs/main/screenshots/layout.png)
+![Agents, blocked first](docs/main/screenshots/home.png) ![One agent with transcript](docs/main/screenshots/agent.png) ![Terminal view with colour](docs/main/screenshots/terminal.png) ![Menu row](docs/main/screenshots/menu.png) ![Layout tree](docs/main/screenshots/layout.png)
 
 ## What it can do
 
 - List every agent in the session, blocked ones first, with status, working directory and tokens.
 - Show an agent's recent output and send it a prompt.
-- Send `esc`, `enter`, `yes`, `no`, `up`, `down`.
-- Show the agent's pane as it looks in the terminal, colours included.
 - Start an agent: pick a name, a kind, and the pane to split for it.
-- Rename an agent, focus it, read what `agent explain` says, or wait for it to go idle or blocked.
 - See the whole layout, workspaces down to panes, with focus and agent status on each node.
 - Create and close workspaces, tabs and panes. Split right or down, zoom, rename, move a pane
   to a new tab or workspace, swap two panes, resize.

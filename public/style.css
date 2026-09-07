@@ -142,16 +142,6 @@ body[data-view="actions"] #view-actions { display: flex; flex-direction: column;
   min-height: var(--tap);
 }
 
-.keys {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--panel);
-}
-
-.keys button { flex: 0 0 auto; }
-
 .menu-row {
   display: flex;
   gap: 6px;

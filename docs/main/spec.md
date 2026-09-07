@@ -115,3 +115,7 @@ tabs, workspaces and worktrees, closing them, and changing the layout moved into
 - 2026-09-06. Out of scope narrowed: writes to the live session (create, close, layout,
   worktrees, notifications) are now in scope. Requirements R22 to R33 live in
   `docs/full-control/spec.md`. R1 to R21 here are unchanged.
+- 2026-09-07. R10 dropped from the agent view: George found the esc/enter/yes/no/up/down row
+  useless on a phone. Sending a key is still there, in the Layout view's pane sheet, and
+  `POST /api/agent/:target/keys` is unchanged. R11's terminal view keeps its code and its
+  route but has no button opening it any more.

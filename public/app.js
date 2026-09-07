@@ -16,7 +16,7 @@
     title: $("title"), back: $("back"), net: $("net"), menu: $("menu"), menuRow: $("menu-row"), plus: $("plus"), notify: $("notify"),
     agents: $("agents"), agentsEmpty: $("agents-empty"),
     transcript: $("transcript"), promptForm: $("prompt-form"), promptText: $("prompt-text"), promptSend: $("prompt-send"),
-    terminal: $("terminal"), openTerminal: $("open-terminal"), agentMore: $("agent-more"),
+    terminal: $("terminal"),
     layout: $("layout"), layoutEmpty: $("layout-empty"),
     worktrees: $("worktrees"), worktreesEmpty: $("worktrees-empty"),
     actions: $("actions"), actionsEmpty: $("actions-empty"), actionResult: $("action-result"),
@@ -723,13 +723,6 @@
     }
   })
 
-  el.openTerminal.addEventListener("click", () => {
-    if (!state.paneId) { setNet("no pane id for this agent yet", true); return }
-    el.terminal.innerHTML = ""
-    show("terminal")
-  })
-  el.agentMore.addEventListener("click", agentMore)
-
   el.promptForm.addEventListener("submit", async (event) => {
     event.preventDefault()
     const value = el.promptText.value.trim()
@@ -745,21 +738,6 @@
       el.promptSend.disabled = false
     }
   })
-
-  for (const key of document.querySelectorAll("[data-key]")) {
-    key.addEventListener("click", async () => {
-      if (!state.agent) return
-      key.disabled = true
-      try {
-        await postJson(`/api/agent/${enc(state.agent)}/keys`, { key: key.dataset.key })
-        setNet(`sent ${key.dataset.key}`)
-      } catch (error) {
-        setNet(error.message, true)
-      } finally {
-        key.disabled = false
-      }
-    })
-  }
 
   show("home")
 })()
