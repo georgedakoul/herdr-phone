@@ -739,6 +739,13 @@
   }
   el.promptText.addEventListener("input", grow)
 
+  // Enter sends. isComposing keeps an IME's own enter from firing it mid-word.
+  el.promptText.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return
+    event.preventDefault()
+    el.promptForm.requestSubmit()
+  })
+
   el.promptForm.addEventListener("submit", async (event) => {
     event.preventDefault()
     const value = el.promptText.value.trim()
