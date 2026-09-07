@@ -78,6 +78,11 @@ marked as such.
 
 ## Changelog
 
+- 2026-09-07: after review, R44's sanitisation was found to be applied in `src/mail.js` but not
+  to the fields `src/app.js` puts into an alert body. Fixed, and a test added. No requirement
+  changed. Two places where the build departs from a literal reading of R36 and R41 are
+  recorded in the plan's Departures rather than being written in here, because they are
+  George's call.
 - 2026-09-07: created. George's answers to the intent's open questions were "follow your
   instinct to follow the best safety method", so R34, R35 and R41 are decided here with the
   reasoning inline.

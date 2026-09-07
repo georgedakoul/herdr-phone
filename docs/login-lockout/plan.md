@@ -114,6 +114,17 @@ second dot before the message goes out.
 - The app-level tests went into a new `test/lockout.test.js` instead of `test/app.test.js`.
   `app.test.js` shares one long-lived server across all its cases, so gate state would leak
   from one test into the next. Each case in `lockout.test.js` starts its own server.
+- Both gates feed both alerts, not just the per-source one. R41 read literally would fire the
+  success alert only on `source.hadTripped`, but an attacker forging a fresh `x-forwarded-for`
+  per request never builds per-source history, so their eventual successful login would be
+  silent. The cost is a false positive: a legitimate login after the app-wide counter tripped
+  also mails. The alert body says which of the two it was. Left as built, flagged to George.
+- A correct password clears the app-wide counter as well as the source's, which R36 does not
+  ask for. It means one legitimate login hands an ongoing forged-header attacker ten fresh
+  free attempts. Left as built, flagged to George, since changing it changes behaviour.
+- R40 asks for "the claimed device". `tailscale serve` sends no device-name header, only
+  `tailscale-user-login`, `tailscale-user-name` and `tailscale-user-profile-pic`, so the
+  tailnet address in the `Source:` line is what stands in for the device.
 - Proof criterion 2 was reworded. With three free attempts the fourth wrong password is still
   compared, answers 401 and sets the wait, so the 429 lands on the fifth attempt. The original
   wording was off by one against the code and against R34.

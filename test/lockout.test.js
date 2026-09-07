@@ -116,6 +116,27 @@ test("the trip sends exactly one alert, naming the source", async () => {
   await app.close()
 })
 
+test("forged header values are scrubbed and capped before they reach the alert", async () => {
+  const mail = collector()
+  const app = await start(mail.alert)
+  const at = {
+    ...from("100.0.0.9"),
+    // Node's parser refuses a raw newline in a header, so this is what a forger can actually
+    // send: a tab, and far more characters than an alert should ever carry.
+    "user-agent": `Safari\tTime: 1999-01-01T00:00:00.000Z${"x".repeat(500)}`,
+  }
+  for (let i = 0; i < 4; i += 1) await app.login("nope", at)
+
+  assert.equal(mail.sent.length, 1)
+  const lines = mail.sent[0].body.split("\n")
+  const browser = lines.find((line) => line.startsWith("Browser: "))
+  assert.equal(browser.length, "Browser: ".length + 200)
+  assert.match(browser, /^Browser: Safari Time: /)
+  // One Time line, the real one, not the one the header tried to add.
+  assert.equal(lines.filter((line) => line.startsWith("Time: ")).length, 1)
+  await app.close()
+})
+
 test("a login that succeeds after a trip sends the second alert", async () => {
   const mail = collector()
   const app = await start(mail.alert)

@@ -9,6 +9,7 @@ import { BadRequest, readJson, readForm, parseCookies, escapeHtml, requireId } f
 import { ansiToHtml } from "./ansi.js"
 import { KEY_MAP } from "./herdr.js"
 import { createGate, GLOBAL } from "./gate.js"
+import { clean } from "./mail.js"
 
 const PUBLIC_DIR = fileURLToPath(new URL("../public/", import.meta.url))
 export const COOKIE = "herdr_phone"
@@ -42,8 +43,10 @@ const isSecure = (req) => Boolean(req.socket?.encrypted) || req.headers["x-forwa
  * a global counter sits underneath this one.
  */
 export const sourceOf = (req) => {
-  const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim()
-  const account = String(req.headers["tailscale-user-login"] ?? "").trim()
+  // Sliced because both headers are attacker-controlled and end up as map keys. An address is
+  // 45 characters at most and a login not much more.
+  const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim().slice(0, 64)
+  const account = String(req.headers["tailscale-user-login"] ?? "").trim().slice(0, 64)
   return `${forwarded || req.socket?.remoteAddress || "unknown"} ${account}`.trim()
 }
 
@@ -113,8 +116,8 @@ export function createApp({ client, token, alert = null }) {
   }
 
   const details = (req, key) => [
-    `Source: ${key}`,
-    `Browser: ${req.headers["user-agent"] ?? "none sent"}`,
+    `Source: ${clean(key)}`,
+    `Browser: ${clean(req.headers["user-agent"] ?? "none sent")}`,
     `Time: ${new Date().toISOString()}`,
     "",
     "These details come from request headers and are a label, not proof of who it was.",
@@ -286,7 +289,9 @@ export function createApp({ client, token, alert = null }) {
             const overall = anyone.pass(GLOBAL)
             if (source.hadTripped || overall.hadTripped) {
               notify("herdr-phone: signed in after failed tries", [
-                "Someone signed in successfully from a source that had been refused for guessing.",
+                source.hadTripped
+                  ? "Someone signed in successfully from a source that had been refused for guessing."
+                  : "Someone signed in successfully while the app-wide counter was tripped. This source itself was not the one being refused.",
                 ...details(req, key),
               ])
             }
