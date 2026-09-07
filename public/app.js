@@ -77,6 +77,13 @@
     refresh()
   }
 
+  /** Phones capitalise and autocorrect by default, which mangles commands, flags and paths. */
+  function noAutocorrect(input) {
+    input.setAttribute("autocapitalize", "off")
+    input.setAttribute("autocorrect", "off")
+    input.spellcheck = false
+  }
+
   const text = (tag, content, className) => {
     const node = document.createElement(tag)
     node.textContent = content
@@ -202,6 +209,7 @@
         } else if (field.type === "textarea") {
           input = document.createElement("textarea")
           input.rows = 3
+          noAutocorrect(input)
         } else {
           input = document.createElement("input")
           input.type = field.type || "text"
@@ -273,10 +281,11 @@
     el.plus.disabled = true
     try {
       const result = await postJson("/api/agents/start", values)
-      if (result.ready) setNet(`started ${values.name} in ${result.pane_id}`)
-      else setNet(`pane ${result.pane_id} made but ${result.message || "the agent is not ready yet"}`, true)
       state.agentsRevision = ""
-      refresh()
+      // Open it either way: a not-ready agent is usually blocked on a question only its screen shows.
+      openAgent({ name: values.name, pane_id: result.pane_id, ...(result.agent || {}) })
+      // show() clears the status line, so say the awkward part after it.
+      if (!result.ready) setNet(`${values.name} is not ready yet, it may be waiting on a prompt`, true)
     } catch (error) {
       setNet(error.message, true)
     } finally {
@@ -723,6 +732,13 @@
     }
   })
 
+  /** Grow the prompt box with the text instead of leaving a two-line slot with a scrollbar in it. */
+  function grow() {
+    el.promptText.style.height = "auto"
+    el.promptText.style.height = `${Math.min(el.promptText.scrollHeight, Math.round(innerHeight / 3))}px`
+  }
+  el.promptText.addEventListener("input", grow)
+
   el.promptForm.addEventListener("submit", async (event) => {
     event.preventDefault()
     const value = el.promptText.value.trim()
@@ -731,6 +747,7 @@
     try {
       await postJson(`/api/agent/${enc(state.agent)}/prompt`, { text: value })
       el.promptText.value = ""
+      grow()
       setNet("sent")
     } catch (error) {
       setNet(error.message, true)

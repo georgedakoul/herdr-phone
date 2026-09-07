@@ -139,11 +139,16 @@ export function createClient({ bin = "herdr", run = runCli, timeout } = {}) {
   const exec = async (args, options = {}) => {
     const { error, stdout, stderr } = await run(bin, args, { timeout, ...options })
     if (error && !String(stdout ?? "").trim()) {
-      const why =
-        error.code === "ENOENT"
-          ? `could not run "${bin}", is herdr installed and on PATH`
-          : String(stderr ?? "").trim() || error.message
-      throw new HerdrError("cli_failed", why)
+      if (error.code === "ENOENT")
+        throw new HerdrError("cli_failed", `could not run "${bin}", is herdr installed and on PATH`)
+      // A command that fails prints its envelope on stderr and exits 1, so the real code lives there.
+      const text = String(stderr ?? "").trim()
+      try {
+        parseEnvelope(text)
+      } catch (e) {
+        if (e instanceof HerdrError && e.code !== "bad_response") throw e
+      }
+      throw new HerdrError("cli_failed", text || error.message)
     }
     return { stdout }
   }

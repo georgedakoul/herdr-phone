@@ -70,6 +70,12 @@ test("a non-zero exit with no output uses stderr", async () => {
   await assert.rejects(createClient({ run }).worktrees(), (e) => e.code === "cli_failed" && e.message === "bad flag")
 })
 
+test("a non-zero exit with an envelope on stderr keeps the real code", async () => {
+  const envelope = JSON.stringify({ error: { code: "agent_not_found", message: "agent bob not found" }, id: "cli:agent:explain" })
+  const { run } = fakeRun({ "*": { error: new Error("exit 1"), stderr: envelope } })
+  await assert.rejects(createClient({ run }).worktrees(), (e) => e.code === "agent_not_found" && e.message === "agent bob not found")
+})
+
 test("snapshot, read, prompt, keys, worktrees and actions build the documented argv", async () => {
   const { run, calls } = fakeRun({
     "api snapshot": ok({ type: "session_snapshot", snapshot: { version: 1, protocol: 20, workspaces: [], tabs: [], panes: [], layouts: [], agents: [{ terminal_id: "t1", agent_status: "blocked" }] } }),
