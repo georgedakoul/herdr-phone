@@ -119,3 +119,6 @@ tabs, workspaces and worktrees, closing them, and changing the layout moved into
   useless on a phone. Sending a key is still there, in the Layout view's pane sheet, and
   `POST /api/agent/:target/keys` is unchanged. R11's terminal view keeps its code and its
   route but has no button opening it any more.
+- 2026-09-07. `POST /login` gained a throttle and an optional mail alert. Requirements R34 to
+  R46 live in `docs/login-lockout/spec.md`. R1 to R21 here are unchanged: the token is still
+  mandatory, the cookie and the comparison are untouched.
